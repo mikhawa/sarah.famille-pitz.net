@@ -58,6 +58,7 @@ class CreateAdminCommand extends Command
         $question = (new Question('Mot de passe (12 caractères minimum)'))
             ->setHidden(true)
             ->setHiddenFallback(false)
+            ->setMaxAttempts(3)
             ->setValidator(function (?string $value): string {
                 if (null === $value || mb_strlen($value) < self::MIN_PASSWORD_LENGTH) {
                     throw new \RuntimeException(\sprintf('Le mot de passe doit contenir au moins %d caractères.', self::MIN_PASSWORD_LENGTH));
