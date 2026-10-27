@@ -35,6 +35,11 @@ class Album
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $eventDate = null;
 
+    // Photo affichée en vignette de l'album
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?Media $coverMedia = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -92,6 +97,18 @@ class Album
     public function setEventDate(?\DateTimeImmutable $eventDate): static
     {
         $this->eventDate = $eventDate;
+
+        return $this;
+    }
+
+    public function getCoverMedia(): ?Media
+    {
+        return $this->coverMedia;
+    }
+
+    public function setCoverMedia(?Media $coverMedia): static
+    {
+        $this->coverMedia = $coverMedia;
 
         return $this;
     }

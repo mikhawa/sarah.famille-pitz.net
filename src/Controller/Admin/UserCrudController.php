@@ -86,7 +86,7 @@ class UserCrudController extends AbstractCrudController
 
         if ($entityInstance->isActive()) {
             $this->invitationMailer->invite($entityInstance);
-            $this->addFlash('success', \sprintf('Invitation envoyée à %s.', $entityInstance->getEmail()));
+            $this->addFlash('success', \sprintf('Invitation envoyée à %s.', htmlspecialchars((string) $entityInstance->getEmail())));
         }
     }
 
@@ -125,7 +125,7 @@ class UserCrudController extends AbstractCrudController
 
         if ($user->isActive()) {
             $this->invitationMailer->invite($user);
-            $this->addFlash('success', \sprintf('Invitation envoyée à %s.', $user->getEmail()));
+            $this->addFlash('success', \sprintf('Invitation envoyée à %s.', htmlspecialchars((string) $user->getEmail())));
         } else {
             $this->addFlash('warning', 'Ce compte est désactivé : réactivez-le avant d\'envoyer une invitation.');
         }

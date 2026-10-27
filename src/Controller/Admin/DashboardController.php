@@ -3,6 +3,7 @@
 namespace App\Controller\Admin;
 
 use App\Entity\Album;
+use App\Entity\Media;
 use App\Entity\Tag;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
@@ -26,6 +27,7 @@ class DashboardController extends AbstractDashboardController
     {
         return $this->render('admin/dashboard.html.twig', [
             'counts' => [
+                'Médias' => $this->entityManager->getRepository(Media::class)->count(),
                 'Comptes' => $this->entityManager->getRepository(User::class)->count(),
                 'Albums' => $this->entityManager->getRepository(Album::class)->count(),
                 'Tags' => $this->entityManager->getRepository(Tag::class)->count(),
@@ -45,6 +47,7 @@ class DashboardController extends AbstractDashboardController
         yield MenuItem::linkToDashboard('Tableau de bord', 'fa fa-home');
 
         yield MenuItem::section('Contenus');
+        yield MenuItem::linkTo(MediaCrudController::class, 'Médias', 'fa fa-photo-film');
         yield MenuItem::linkTo(AlbumCrudController::class, 'Albums', 'fa fa-images');
         yield MenuItem::linkTo(TagCrudController::class, 'Tags', 'fa fa-tags');
 

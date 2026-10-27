@@ -22,13 +22,15 @@ MAILER_DSN=smtp://mailpit:1025
 ## Fichiers
 
 - `docker-compose.yml` — définition des services
-- `docker/php/Dockerfile` — image PHP (extensions : pdo_mysql, intl, zip, gd avec JPEG/WebP, exif, opcache)
-- `docker/php/php.ini` — limites d'upload (256 Mo) pour photos et vidéos, fuseau Europe/Brussels
-- `docker/nginx/default.conf` — vhost Symfony (`client_max_body_size 260M`)
+- `docker/php/Dockerfile` — image PHP (extensions : pdo_mysql, intl, zip, gd avec JPEG/WebP, exif, opcache) + ffmpeg
+- `docker/php/php.ini` — uploads : 256 Mo par fichier, 1 Go et 50 fichiers par envoi ; fuseau Europe/Brussels
+- `docker/nginx/default.conf` — vhost Symfony (`client_max_body_size 1G`)
 
 Le conteneur PHP tourne avec un utilisateur `sarah` dont l'UID/GID correspond à celui de l'hôte (1000 par défaut),
 pour que les fichiers créés (vendor, cache, uploads) n'appartiennent pas à root. Pour un autre UID :
 `UID=$(id -u) GID=$(id -g) docker compose build php`.
+
+Les médias envoyés sont stockés dans `var/storage/media/` (hors de `public/`, non versionné) : à inclure dans les sauvegardes.
 
 ## Commandes courantes
 

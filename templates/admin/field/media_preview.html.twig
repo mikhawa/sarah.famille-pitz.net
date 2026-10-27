@@ -1,0 +1,19 @@
+{# @var entity \EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto #}
+{% set media = entity.instance %}
+{% if ea().crud.currentPage == 'detail' %}
+    {% if media.type.value == 'photo' %}
+        <img src="{{ path('media_thumb', {id: media.id, size: 'large'}) }}" alt="{{ media.displayTitle }}" style="max-width: 100%; max-height: 70vh;">
+    {% elseif media.type.value == 'video' %}
+        <video controls preload="metadata" style="max-width: 100%; max-height: 70vh;"
+               {% if media.type.hasThumbnail %}poster="{{ path('media_thumb', {id: media.id, size: 'large'}) }}"{% endif %}>
+            <source src="{{ path('media_file', {id: media.id}) }}" type="{{ media.mimeType }}">
+        </video>
+    {% else %}
+        <audio controls preload="metadata" src="{{ path('media_file', {id: media.id}) }}"></audio>
+    {% endif %}
+{% elseif media.type.hasThumbnail %}
+    <img src="{{ path('media_thumb', {id: media.id, size: 'small'}) }}" alt="" loading="lazy"
+         style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px;">
+{% else %}
+    <span class="fa fa-music fa-2x text-muted" title="Musique"></span>
+{% endif %}

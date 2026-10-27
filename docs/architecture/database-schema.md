@@ -23,7 +23,7 @@ MariaDB 11.4, `utf8mb4`. Tables et colonnes en `snake_case`.
 | slug           | varchar(160)  | unique                                 |
 | description    | text null     |                                        |
 | event_date     | date null     | date de l'événement                    |
-| cover_media_id | FK media null | image de couverture                    |
+| cover_media_id | FK media null | photo de couverture, `ON DELETE SET NULL` |
 | created_at     | datetime_immutable |                                   |
 
 ## `media`
@@ -31,18 +31,18 @@ MariaDB 11.4, `utf8mb4`. Tables et colonnes en `snake_case`.
 | Colonne           | Type          | Notes                                         |
 |-------------------|---------------|-----------------------------------------------|
 | id                | int PK        |                                               |
-| type              | varchar(10)   | enum PHP `MediaType` : `photo`, `audio`, `video` |
+| type              | varchar(10)   | enum PHP `App\Enum\MediaType` : `photo`, `audio`, `video` |
 | title             | varchar(150) null |                                           |
 | description       | text null     |                                               |
-| storage_path      | varchar(255)  | relatif à `var/storage/media/originals/`      |
+| storage_path      | varchar(255)  | unique, relatif à `var/storage/media/originals/` |
 | original_filename | varchar(255)  |                                               |
 | mime_type         | varchar(100)  |                                               |
-| size              | bigint        | octets                                        |
+| size              | int           | octets (fichier stocké, 256 Mo max)           |
 | width / height    | int null      | photos et vidéos                              |
 | duration          | int null      | secondes, audio et vidéo                      |
 | taken_at          | datetime_immutable null | date EXIF ou saisie ; sert au fil chronologique |
 | album_id          | FK album null | `ON DELETE SET NULL`                          |
-| uploaded_by_id    | FK user       |                                               |
+| uploaded_by_id    | FK user null  | `ON DELETE SET NULL` : le média survit au compte |
 | created_at        | datetime_immutable |                                          |
 
 Index : `(taken_at)`, `(created_at)`, `(album_id)`.
@@ -58,6 +58,10 @@ Index : `(taken_at)`, `(created_at)`, `(album_id)`.
 ## `media_tag` (ManyToMany)
 
 `media_id` FK, `tag_id` FK, clé primaire composite.
+
+## `reset_password_request`
+
+Jetons du `symfonycasts/reset-password-bundle` (invitation et mot de passe oublié). `user_id` FK `ON DELETE CASCADE`.
 
 ## `comment`
 

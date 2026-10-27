@@ -1,0 +1,21 @@
+{% extends '@EasyAdmin/page/content.html.twig' %}
+
+{% form_theme form '@EasyAdmin/crud/form_theme.html.twig' %}
+
+{% block page_title %}Ajouter des médias{% endblock %}
+
+{% block main %}
+    <p class="text-muted">
+        Les photos sont débarrassées de leurs informations cachées (position GPS, appareil…) et les vidéos de leurs
+        métadonnées avant d'être enregistrées. L'envoi de grosses vidéos peut prendre quelques minutes.
+    </p>
+
+    {{ form_start(form) }}
+        {{ form_row(form.files) }}
+        {{ form_row(form.album) }}
+        {{ form_row(form.tags) }}
+        <button type="submit" class="btn btn-primary">
+            <i class="fa fa-upload"></i> Envoyer
+        </button>
+    {{ form_end(form) }}
+{% endblock %}

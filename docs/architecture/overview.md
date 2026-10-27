@@ -36,26 +36,42 @@ Rien n'est public : tout le site est derrière une connexion.
 ## Stockage des médias
 
 ```
-var/storage/media/
-├── originals/AAAA/MM/<uuid>.<ext>     # fichier uploadé (photo nettoyée, audio, vidéo)
-└── thumbs/AAAA/MM/<uuid>_<taille>.webp # miniatures générées à l'upload (photos)
+var/storage/media/                       (var/storage/media_test/ en environnement de test)
+├── originals/AAAA/MM/<hex32>.<ext>      # fichier nettoyé (photo réencodée, vidéo sans métadonnées, audio)
+└── thumbs/AAAA/MM/<hex32>_<taille>.webp # miniatures small (400 px) et large (1600 px)
 ```
 
-- Les fichiers ne sont jamais accessibles directement par URL.
-- `MediaFileController` (`/media/{id}/file`, `/media/{id}/thumb/{taille}`) vérifie `MediaVoter::VIEW` puis renvoie une
-  `BinaryFileResponse` (gère les requêtes `Range`, nécessaires pour avancer dans une vidéo ou une musique).
-- En prod : délégation à nginx via `X-Accel-Redirect` vers une `location internal` pour les gros fichiers.
-- Miniatures générées avec GD (déjà présent dans l'image PHP). Pas de LiipImagine : son cache est écrit dans `public/`.
-- Vidéos : formats lus nativement par les navigateurs (MP4/H.264, WebM), sans transcodage dans un premier temps.
-  Une conversion ffmpeg via Messenger pourra être ajoutée plus tard.
-- Limite d'upload actuelle : 256 Mo par fichier (`docker/php/php.ini`, `docker/nginx/default.conf`).
+- Les fichiers ne sont jamais accessibles directement par URL (`var/` est hors de `public/`, et ignoré par git).
+- `MediaFileController` (`/media/{id}/file`, `/media/{id}/thumb/{small|large}`) vérifie `MediaVoter::VIEW` (membre actif)
+  puis renvoie une `BinaryFileResponse` (requêtes `Range` : avance rapide dans les vidéos et la musique).
+  `?download=1` force le téléchargement. Cache navigateur privé 24 h.
+- En prod (étape 6) : délégation à nginx via `X-Accel-Redirect` vers une `location internal` pour les gros fichiers.
+- Suppression d'un média (admin ou autre) : `MediaFileCleanupListener` efface l'original et les miniatures.
+
+### Traitement à l'envoi (`MediaUploader`)
+
+Le type est détecté sur le **contenu** du fichier, pas sur son extension.
+
+| Type   | Formats acceptés          | Traitement                                                                           |
+|--------|---------------------------|--------------------------------------------------------------------------------------|
+| Photo  | JPEG, PNG, WebP, GIF      | Orientation EXIF appliquée puis **réencodage GD** : toutes les métadonnées (GPS compris) disparaissent. Date de prise de vue conservée en base. GIF copié tel quel (animation). 40 mégapixels max. |
+| Vidéo  | MP4, WebM, MOV            | `ffmpeg -map_metadata -1 -c copy` : métadonnées (GPS compris) retirées **sans réencodage**, `faststart` pour MP4/MOV. Durée, dimensions et date de tournage lues avant nettoyage. Image d'aperçu extraite à 1 s. |
+| Audio  | MP3, M4A, OGG, WAV, FLAC  | Copié tel quel, durée lue avec ffprobe.                                               |
+
+- HEIC (iPhone) refusé avec un message : GD ne sait pas le lire. Exporter en JPEG (réglage iPhone « Le plus compatible »).
+- Pas de transcodage vidéo : une vidéo HEVC/MOV peut ne pas se lire dans tous les navigateurs.
+- Limites : 256 Mo par fichier, 1 Go et 50 fichiers par envoi (`docker/php/php.ini`, `docker/nginx/default.conf`).
+- ffmpeg/ffprobe doivent être installés sur le serveur (présents dans l'image Docker).
 
 ## Couches
 
 - `src/Entity/` : `User`, `Album`, `Media`, `Tag`, `Comment` — voir [database-schema.md](database-schema.md)
-- `src/Service/` : `MediaUploader` (validation, rangement, nettoyage EXIF, miniatures), `MediaStorage` (chemins)
+- `src/Enum/MediaType` : `photo`, `audio`, `video`
+- `src/Service/` : `MediaUploader` (validation, nettoyage, miniatures), `MediaStorage` (chemins), `Ffmpeg` (ffprobe/ffmpeg),
+  `AccountInvitationMailer`
 - `src/Security/Voter/` : `MediaVoter`, `CommentVoter`
-- `src/Controller/Admin/` : tableau de bord et CRUD EasyAdmin
+- `src/Controller/Admin/` : tableau de bord et CRUD EasyAdmin ; `MediaCrudController::upload` (`/admin/media/upload`)
+  pour l'envoi de plusieurs fichiers à la fois, rangés dans un album avec des tags
 - `src/Controller/` : front (fil chronologique, albums, tags, fiche média, commentaires), `MediaFileController`
 
 ## Front
@@ -68,7 +84,7 @@ var/storage/media/
 
 1. ✅ **Authentification** : entité `User`, connexion, `access_control`, commande `app:create-admin`.
 2. ✅ **Administration** : EasyAdmin, CRUD utilisateurs (avec invitation), albums, tags.
-3. **Médias** : entité `Media`, upload privé, nettoyage EXIF, miniatures, `MediaFileController`, CRUD admin.
+3. ✅ **Médias** : entité `Media`, upload privé, nettoyage EXIF/GPS, miniatures, `MediaFileController`, CRUD admin.
 4. **Front** : fil chronologique, albums, tags, fiche média et lecteurs.
 5. **Commentaires** : ajout par les membres, modération dans l'admin.
 6. **Prod** : `X-Accel-Redirect`, sauvegardes de la BDD et de `var/storage/`.
