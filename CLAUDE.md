@@ -14,7 +14,15 @@
 
 ## Mémoire persistante
 `.claude/MEMORY.md` est versionné dans git et chargé automatiquement via symlink.
-Sur un nouveau poste après `git clone`, exécuter :
+Sur un nouveau poste après `git clone`, exécuter depuis la racine du projet :
+
+```bash
+SLUG=$(pwd | sed 's#[/.]#-#g')
+mkdir -p ~/.claude/projects/$SLUG/memory
+ln -sfn "$(pwd)/.claude/MEMORY.md" ~/.claude/projects/$SLUG/memory/MEMORY.md
+```
+
+État d'avancement et reprise du travail : voir `.claude/MEMORY.md`.
 
 
 ## Règles d'utilisation des modèles Claude
