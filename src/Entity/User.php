@@ -104,6 +104,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return \in_array('ROLE_ADMIN', $this->getRoles(), true);
     }
 
+    // Utilisé par l'administration : case « Administrateur » plutôt qu'une liste de rôles
+    public function setAdmin(bool $admin): static
+    {
+        $roles = array_values(array_diff($this->roles, ['ROLE_ADMIN']));
+        if ($admin) {
+            $roles[] = 'ROLE_ADMIN';
+        }
+        $this->roles = $roles;
+
+        return $this;
+    }
+
     public function getPassword(): ?string
     {
         return $this->password;

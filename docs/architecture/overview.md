@@ -23,7 +23,10 @@ Rien n'est public : tout le site est derrière une connexion.
 
 - `access_control` : tout `^/` exige `ROLE_USER`, sauf `/login` et `/reset-password` ; `^/admin` exige `ROLE_ADMIN`.
 - Pas de formulaire d'inscription : l'admin crée le compte, le membre reçoit un e-mail pour définir son mot de passe
-  (`symfonycasts/reset-password-bundle`).
+  (`AccountInvitationMailer`, qui réutilise le jeton de `symfonycasts/reset-password-bundle` ; liens valables 48 h).
+  L'admin peut renvoyer l'invitation depuis la liste des comptes.
+- L'admin connecté ne peut ni se retirer ses droits, ni se désactiver, ni supprimer son propre compte.
+- E-mails envoyés de façon synchrone (pas encore de worker Messenger).
 - Limitation des tentatives de connexion (`login_throttling`).
 - Voters : `MediaVoter` (VIEW, COMMENT), `CommentVoter` (EDIT, DELETE : auteur ou admin).
 - Non-indexation : en-tête `X-Robots-Tag: noindex, nofollow` et `robots.txt` qui interdit tout.
@@ -63,8 +66,8 @@ var/storage/media/
 
 ## Plan de réalisation
 
-1. **Authentification** : entité `User`, connexion, `access_control`, commande `app:create-admin`.
-2. **Administration** : EasyAdmin, CRUD utilisateurs, albums, tags.
+1. ✅ **Authentification** : entité `User`, connexion, `access_control`, commande `app:create-admin`.
+2. ✅ **Administration** : EasyAdmin, CRUD utilisateurs (avec invitation), albums, tags.
 3. **Médias** : entité `Media`, upload privé, nettoyage EXIF, miniatures, `MediaFileController`, CRUD admin.
 4. **Front** : fil chronologique, albums, tags, fiche média et lecteurs.
 5. **Commentaires** : ajout par les membres, modération dans l'admin.

@@ -1,0 +1,12 @@
+<h1>Bonjour {{ user.displayName }} !</h1>
+
+<p>Un compte a été créé pour vous sur le site privé de Sarah, pour voir ses photos, sa musique et ses vidéos.</p>
+
+<p>Pour choisir votre mot de passe, cliquez sur ce lien :</p>
+
+<p><a href="{{ url('app_reset_password', {token: resetToken.token}) }}">{{ url('app_reset_password', {token: resetToken.token}) }}</a></p>
+
+<p>Ce lien expire dans {{ resetToken.expirationMessageKey|trans(resetToken.expirationMessageData, 'ResetPasswordBundle') }}.
+Votre identifiant de connexion sera cette adresse e-mail : {{ user.email }}</p>
+
+<p>À bientôt !</p>

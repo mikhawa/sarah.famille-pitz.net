@@ -1,0 +1,14 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}E-mail envoyé — Sarah{% endblock %}
+
+{% block body %}
+    <section class="login">
+        <h1>Vérifiez vos e-mails</h1>
+        <p>
+            Si un compte correspond à cette adresse, un e-mail contenant un lien vient d'être envoyé.
+            Ce lien expire dans {{ resetToken.expirationMessageKey|trans(resetToken.expirationMessageData, 'ResetPasswordBundle') }}.
+        </p>
+        <p>Rien reçu ? Regardez dans les indésirables ou <a href="{{ path('app_forgot_password_request') }}">réessayez</a>.</p>
+    </section>
+{% endblock %}

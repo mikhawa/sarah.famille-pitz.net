@@ -7,6 +7,10 @@
         <h1>Connexion</h1>
         <p>Ce site est réservé à la famille.</p>
 
+        {% for message in app.flashes('success') %}
+            <div class="alert alert-success" role="status">{{ message }}</div>
+        {% endfor %}
+
         {% if error %}
             <div class="alert alert-error" role="alert">
                 {{ error.messageKey|trans(error.messageData, 'security') }}
@@ -28,5 +32,7 @@
 
             <button type="submit">Se connecter</button>
         </form>
+
+        <p><a href="{{ path('app_forgot_password_request') }}">Mot de passe oublié ?</a></p>
     </section>
 {% endblock %}

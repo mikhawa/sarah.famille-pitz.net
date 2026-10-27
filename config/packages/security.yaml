@@ -35,9 +35,10 @@ security:
                 interval: '1 minute'
 
     # Note: Only the *first* matching rule is applied
-    # Site entièrement privé : seule la page de connexion est publique
+    # Site entièrement privé : seules la connexion et la réinitialisation du mot de passe sont publiques
     access_control:
         - { path: ^/login$, roles: PUBLIC_ACCESS }
+        - { path: ^/reset-password, roles: PUBLIC_ACCESS }
         - { path: ^/admin, roles: ROLE_ADMIN }
         - { path: ^/, roles: ROLE_USER }
 
