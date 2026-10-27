@@ -1,0 +1,21 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mot de passe oublié — Sarah{% endblock %}
+
+{% block body %}
+    <section class="login">
+        {% for flash_error in app.flashes('reset_password_error') %}
+            <div class="alert alert-error" role="alert">{{ flash_error }}</div>
+        {% endfor %}
+
+        <h1>Mot de passe oublié</h1>
+        <p>Saisissez votre adresse e-mail : vous recevrez un lien pour choisir un nouveau mot de passe.</p>
+
+        {{ form_start(requestForm) }}
+            {{ form_row(requestForm.email) }}
+            <button type="submit">Envoyer le lien</button>
+        {{ form_end(requestForm) }}
+
+        <p><a href="{{ path('app_login') }}">Retour à la connexion</a></p>
+    </section>
+{% endblock %}

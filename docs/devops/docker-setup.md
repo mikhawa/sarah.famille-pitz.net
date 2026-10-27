@@ -22,13 +22,15 @@ MAILER_DSN=smtp://mailpit:1025
 ## Fichiers
 
 - `docker-compose.yml` — définition des services
-- `docker/php/Dockerfile` — image PHP (extensions : pdo_mysql, intl, zip, gd avec JPEG/WebP, exif, opcache)
-- `docker/php/php.ini` — limites d'upload (256 Mo) pour photos et vidéos, fuseau Europe/Brussels
-- `docker/nginx/default.conf` — vhost Symfony (`client_max_body_size 260M`)
+- `docker/php/Dockerfile` — image PHP (extensions : pdo_mysql, intl, zip, gd avec JPEG/WebP, exif, opcache) + ffmpeg
+- `docker/php/php.ini` — uploads : 256 Mo par fichier, 1 Go et 50 fichiers par envoi ; fuseau Europe/Brussels
+- `docker/nginx/default.conf` — vhost Symfony (`client_max_body_size 1G`)
 
 Le conteneur PHP tourne avec un utilisateur `sarah` dont l'UID/GID correspond à celui de l'hôte (1000 par défaut),
 pour que les fichiers créés (vendor, cache, uploads) n'appartiennent pas à root. Pour un autre UID :
 `UID=$(id -u) GID=$(id -g) docker compose build php`.
+
+Les médias envoyés sont stockés dans `var/storage/media/` (hors de `public/`, non versionné) : à inclure dans les sauvegardes.
 
 ## Commandes courantes
 
@@ -39,6 +41,17 @@ docker compose exec php bash          # shell dans le conteneur PHP
 docker compose exec php composer install
 docker compose exec php php bin/console doctrine:migrations:migrate
 docker compose logs -f nginx          # logs
+docker compose exec php php bin/console app:create-admin moi@example.com "Papa"   # créer un admin
+docker compose exec php php bin/phpunit                                          # tests
+```
+
+### Base de test
+
+Les tests utilisent `sarah_db_test` (suffixe `_test` ajouté par Doctrine). Sur un nouveau poste :
+
+```bash
+docker compose exec -T db mariadb -uroot -proot -e "CREATE DATABASE IF NOT EXISTS sarah_db_test CHARACTER SET utf8mb4; GRANT ALL ON \`sarah_db_test\`.* TO 'sarah_user'@'%';"
+docker compose exec php bash -c 'APP_ENV=test php bin/console doctrine:migrations:migrate -n'
 ```
 
 ## Installation initiale de Symfony 7.4

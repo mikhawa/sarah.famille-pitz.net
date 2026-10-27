@@ -1,0 +1,15 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Choisir un mot de passe — Sarah{% endblock %}
+
+{% block body %}
+    <section class="login">
+        <h1>Choisir votre mot de passe</h1>
+        <p>12 caractères minimum. Une phrase de plusieurs mots est facile à retenir et solide.</p>
+
+        {{ form_start(resetForm) }}
+            {{ form_row(resetForm.plainPassword) }}
+            <button type="submit">Enregistrer</button>
+        {{ form_end(resetForm) }}
+    </section>
+{% endblock %}
