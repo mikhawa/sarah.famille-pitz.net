@@ -43,7 +43,10 @@ docker compose logs -f nginx          # logs
 
 ## Installation initiale de Symfony 7.4
 
-Le dossier du projet n'étant pas vide, on crée le squelette dans un dossier temporaire puis on le fusionne :
+> Déjà effectuée (Symfony 7.4.21 webapp). Sur un nouveau poste, après `git clone` :
+> `docker compose up -d --build && docker compose exec php composer install`.
+
+Pour mémoire, le dossier du projet n'étant pas vide, le squelette a été créé dans un dossier temporaire puis fusionné :
 
 ```bash
 docker compose exec php bash -c '
