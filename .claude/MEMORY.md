@@ -21,7 +21,16 @@ Traçabilité : `.claude-tasks/opus/001` à `007` ; prochain numéro **008**.
 
 - Accès : comptes famille individuels créés par l'admin, pas d'inscription libre
 - Admin : EasyAdmin ; stockage : fichiers sur le VPS hors `public/` ; organisation : albums, tags, fil chronologique, commentaires
-- Le choix de modèle (Haiku/Sonnet/Opus) et la fiche `.claude-tasks/` sont obligatoires (voir `CLAUDE.md`)
+- Le choix de modèle (Haiku/Sonnet/Opus) et la fiche `.claude-tasks/` sont obligatoires (voir `CLAUDE.md`) En résumé :
+
+| Complexité    | Modèle     | Exemples                                     |
+|---------------|------------|----------------------------------------------|
+| Complexe      | **Opus**   | Architecture, sécurité, refactoring majeur   |
+| Intermédiaire | **Sonnet** | Controllers, Services, tests, GitHub Actions |
+| Simple        | **Haiku**  | CRUD, migrations, typos, questions syntaxe   |
+
+**Claude doit choisir lui-même le modèle le plus adapté** à chaque tâche, sans attendre que l'utilisateur le précise. Si la tâche en cours relève d'un modèle différent du modèle actif, Claude le signale et utilise l'`Agent` tool avec le paramètre `model` approprié (`opus`, `sonnet` ou `haiku`).
+
 
 ## Reprendre sur un nouveau poste
 
