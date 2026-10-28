@@ -1,0 +1,67 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ media.displayTitle }} — Sarah{% endblock %}
+
+{% block body %}
+    <article class="media-page" data-controller="media-nav">
+        <nav class="media-nav" aria-label="Souvenirs voisins">
+            {% if previous %}
+                <a href="{{ path('media_show', {id: previous.id}) }}" rel="prev" data-media-nav-target="previous" aria-label="Souvenir précédent">‹</a>
+            {% else %}
+                <span aria-hidden="true"></span>
+            {% endif %}
+            {% if media.album %}
+                <a href="{{ path('album_show', {slug: media.album.slug}) }}" class="media-back">{{ media.album.title }}</a>
+            {% else %}
+                <a href="{{ path('app_home') }}" class="media-back">Tous les souvenirs</a>
+            {% endif %}
+            {% if next %}
+                <a href="{{ path('media_show', {id: next.id}) }}" rel="next" data-media-nav-target="next" aria-label="Souvenir suivant">›</a>
+            {% else %}
+                <span aria-hidden="true"></span>
+            {% endif %}
+        </nav>
+
+        <figure class="player player-{{ media.type.value }}">
+            {% if media.type.value == 'photo' %}
+                <a href="{{ path('media_file', {id: media.id}) }}" data-turbo="false" title="Voir en grand">
+                    <img src="{{ path('media_thumb', {id: media.id, size: 'large'}) }}" alt="{{ media.displayTitle }}"
+                         {% if media.width and media.height %}width="{{ media.width }}" height="{{ media.height }}"{% endif %}>
+                </a>
+            {% elseif media.type.value == 'video' %}
+                <video controls preload="metadata" playsinline poster="{{ path('media_thumb', {id: media.id, size: 'large'}) }}"
+                       {% if media.width and media.height %}width="{{ media.width }}" height="{{ media.height }}"{% endif %}>
+                    <source src="{{ path('media_file', {id: media.id}) }}" type="{{ media.mimeType }}">
+                    Ton navigateur ne sait pas lire cette vidéo : <a href="{{ path('media_file', {id: media.id, download: 1}) }}" data-turbo="false">télécharge-la</a>.
+                </video>
+            {% else %}
+                <span class="player-icon" aria-hidden="true">🎵</span>
+                <audio controls preload="metadata" src="{{ path('media_file', {id: media.id}) }}"></audio>
+            {% endif %}
+        </figure>
+
+        <div class="media-info">
+            <h1>{{ media.displayTitle }}</h1>
+            <p class="meta">
+                {{ media.type.label }}
+                · {{ media.sortDate|format_date('full')|capitalize }}
+                {% if media.duration %}· {{ media.duration|duration }}{% endif %}
+                {% if media.uploadedBy %}· ajouté par {{ media.uploadedBy.displayName }}{% endif %}
+            </p>
+
+            {% if media.description %}
+                <p class="description">{{ media.description|nl2br }}</p>
+            {% endif %}
+
+            {% if media.tags is not empty %}
+                <ul class="tags">
+                    {% for tag in media.tags %}
+                        <li><a href="{{ path('tag_show', {slug: tag.slug}) }}">{{ tag.name }}</a></li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+
+            <p><a href="{{ path('media_file', {id: media.id, download: 1}) }}" class="button" data-turbo="false">Télécharger</a></p>
+        </div>
+    </article>
+{% endblock %}

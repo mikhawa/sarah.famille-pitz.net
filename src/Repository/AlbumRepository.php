@@ -15,4 +15,21 @@ class AlbumRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Album::class);
     }
+
+    /**
+     * Albums du plus récent au plus ancien, selon la date de l'événement (sinon la date de création)
+     *
+     * @return list<Album>
+     */
+    public function findAllForListing(): array
+    {
+        return $this->createQueryBuilder('a')
+            ->addSelect('cover')
+            ->leftJoin('a.coverMedia', 'cover')
+            ->addSelect('COALESCE(a.eventDate, a.createdAt) AS HIDDEN sortDate')
+            ->orderBy('sortDate', 'DESC')
+            ->addOrderBy('a.id', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
 }

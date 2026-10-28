@@ -90,9 +90,10 @@ class MediaTest extends WebTestCase
         $media = $this->storeMedia($this->fixtures->png());
         $this->client->loginUser($this->createUser('ancien@example.com', active: false));
 
+        // Déconnecté par DeactivatedUserSubscriber avant même le contrôle de MediaVoter
         $this->client->request('GET', '/media/'.$media->getId().'/file');
 
-        self::assertResponseStatusCodeSame(403);
+        self::assertResponseRedirects('/login');
     }
 
     public function testUnknownMediaAndMissingThumbnailReturn404(): void

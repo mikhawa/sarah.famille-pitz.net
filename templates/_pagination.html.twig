@@ -1,0 +1,12 @@
+{# Paramètres : medias (App\Pagination\Page), route, params (paramètres de route en plus de page) #}
+{% if medias.lastPage > 1 %}
+    <nav class="pagination" aria-label="Pages">
+        {% if medias.hasPrevious %}
+            <a href="{{ path(route, params|merge({page: medias.current - 1})) }}" rel="prev">‹ Précédents</a>
+        {% endif %}
+        <span>Page {{ medias.current }} sur {{ medias.lastPage }}</span>
+        {% if medias.hasNext %}
+            <a href="{{ path(route, params|merge({page: medias.current + 1})) }}" rel="next">Suivants ›</a>
+        {% endif %}
+    </nav>
+{% endif %}

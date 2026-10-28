@@ -200,6 +200,14 @@ class Media
         return $this;
     }
 
+    /**
+     * Date retenue pour le fil chronologique : prise de vue, sinon date d'envoi
+     */
+    public function getSortDate(): \DateTimeImmutable
+    {
+        return $this->takenAt ?? $this->createdAt;
+    }
+
     public function getAlbum(): ?Album
     {
         return $this->album;
