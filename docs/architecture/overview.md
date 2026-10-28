@@ -76,15 +76,28 @@ Le type est détecté sur le **contenu** du fichier, pas sur son extension.
 
 ## Front
 
-- Accueil : fil chronologique des médias les plus récents (pagination).
-- Pages album, page tag, fiche média avec lecteur `<img>`, `<audio>` ou `<video>` et commentaires.
-- Twig + AssetMapper/ImportMap + Stimulus/Turbo (pas de build Node).
+| Route          | URL               | Contenu                                                                     |
+|----------------|-------------------|-----------------------------------------------------------------------------|
+| `app_home`     | `/`               | Fil chronologique, du plus récent au plus ancien, regroupé par mois ; filtre `?type=photo\|video\|audio` |
+| `album_index`  | `/albums`         | Albums (date de l'événement, sinon de création) et thèmes (tags utilisés)   |
+| `album_show`   | `/albums/{slug}`  | Médias de l'album, du plus ancien au plus récent                            |
+| `tag_show`     | `/tags/{slug}`    | Médias du tag, du plus récent au plus ancien                                |
+| `media_show`   | `/media/{id}`     | Lecteur `<img>`, `<video>` ou `<audio>`, infos, tags, téléchargement        |
+
+- Date du fil : `Media::getSortDate()` = date de prise de vue, sinon date d'envoi (`COALESCE` dans `MediaRepository`).
+- Pagination : 24 médias par page (`App\Pagination\Page`, `?page=N`, 404 au-delà de la dernière page).
+- Fiche média : précédent/suivant dans l'album du média (ordre de l'album), sinon dans le fil ;
+  flèches du clavier et glissement du doigt (contrôleur Stimulus `media-nav`).
+- Album sans couverture choisie : première photo ou vidéo de l'album.
+- Un membre désactivé pendant qu'il est connecté est déconnecté à sa requête suivante (`DeactivatedUserSubscriber`).
+- Dates en français via `twig/intl-extra` (`format_date`) ; filtre Twig `duration` (`App\Twig\AppExtension`).
+- Twig + AssetMapper/ImportMap + Stimulus/Turbo (pas de build Node) ; feuille de style unique `assets/styles/app.css`.
 
 ## Plan de réalisation
 
 1. ✅ **Authentification** : entité `User`, connexion, `access_control`, commande `app:create-admin`.
 2. ✅ **Administration** : EasyAdmin, CRUD utilisateurs (avec invitation), albums, tags.
 3. ✅ **Médias** : entité `Media`, upload privé, nettoyage EXIF/GPS, miniatures, `MediaFileController`, CRUD admin.
-4. **Front** : fil chronologique, albums, tags, fiche média et lecteurs.
+4. ✅ **Front** : fil chronologique, albums, tags, fiche média et lecteurs.
 5. **Commentaires** : ajout par les membres, modération dans l'admin.
 6. **Prod** : `X-Accel-Redirect`, sauvegardes de la BDD et de `var/storage/`.

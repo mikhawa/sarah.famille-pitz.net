@@ -1,6 +1,36 @@
 {% extends 'base.html.twig' %}
 
 {% block body %}
-    <h1>Bienvenue sur le site de Sarah</h1>
-    <p>Les photos, la musique et les vidéos arriveront bientôt ici.</p>
+    <h1 class="visually-hidden">Toutes les photos, vidéos et musiques</h1>
+
+    <nav class="filters" aria-label="Filtrer par type">
+        <a href="{{ path('app_home') }}" {% if current_type is null %}aria-current="page"{% endif %}>Tout</a>
+        {% for type in types %}
+            <a href="{{ path('app_home', {type: type.value}) }}" {% if current_type == type %}aria-current="page"{% endif %}>{{ type.label }}</a>
+        {% endfor %}
+    </nav>
+
+    {% if medias.items is empty %}
+        <p class="empty">Rien ici pour l'instant. Les souvenirs arrivent bientôt !</p>
+    {% else %}
+        {# Regroupement par mois, d'après la date de prise de vue #}
+        {% set months = {} %}
+        {% for media in medias.items %}
+            {% set key = media.sortDate|date('Y-m') %}
+            {% set months = months|merge({(key): (months[key] ?? [])|merge([media])}) %}
+        {% endfor %}
+
+        {% for medias_of_month in months %}
+            <section class="month">
+                <h2>{{ (medias_of_month|first).sortDate|format_date(pattern: 'MMMM y')|capitalize }}</h2>
+                <ul class="grid">
+                    {% for media in medias_of_month %}
+                        {{ include('media/_tile.html.twig') }}
+                    {% endfor %}
+                </ul>
+            </section>
+        {% endfor %}
+
+        {{ include('_pagination.html.twig', {route: 'app_home', params: current_type ? {type: current_type.value} : {}}) }}
+    {% endif %}
 {% endblock %}

@@ -15,12 +15,20 @@
     </head>
     <body>
         {% if app.user %}
+            {% set route = app.request.attributes.get('_route') %}
             <header class="site-header">
-                <a href="{{ path('app_home') }}" class="site-title">Sarah</a>
-                <nav>
-                    <span>Bonjour {{ app.user.displayName }}</span>
-                    <a href="{{ path('app_logout') }}">Se déconnecter</a>
+                <a href="{{ path('app_home') }}" class="site-title">🌈 Sarah</a>
+                <nav class="site-nav" aria-label="Navigation principale">
+                    <a href="{{ path('app_home') }}" {% if route == 'app_home' %}aria-current="page"{% endif %}>Tout voir</a>
+                    <a href="{{ path('album_index') }}" {% if route starts with 'album_' or route starts with 'tag_' %}aria-current="page"{% endif %}>Albums</a>
+                    {% if is_granted('ROLE_ADMIN') %}
+                        <a href="{{ path('admin') }}" data-turbo="false">Administration</a>
+                    {% endif %}
                 </nav>
+                <div class="site-user">
+                    <span>Bonjour {{ app.user.displayName }}</span>
+                    <a href="{{ path('app_logout') }}" data-turbo="false">Se déconnecter</a>
+                </div>
             </header>
         {% endif %}
 

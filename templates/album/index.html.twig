@@ -1,0 +1,41 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Albums — Sarah{% endblock %}
+
+{% block body %}
+    <h1>Albums</h1>
+
+    {% if albums is empty %}
+        <p class="empty">Aucun album pour l'instant.</p>
+    {% else %}
+        <ul class="albums">
+            {% for album in albums %}
+                {% set stat = stats[album.id] ?? {count: 0, firstVisualId: null} %}
+                {% set cover_id = album.coverMedia and album.coverMedia.type.hasThumbnail ? album.coverMedia.id : stat.firstVisualId %}
+                <li>
+                    <a href="{{ path('album_show', {slug: album.slug}) }}" class="album-card">
+                        {% if cover_id %}
+                            <img src="{{ path('media_thumb', {id: cover_id, size: 'small'}) }}" alt="" loading="lazy">
+                        {% else %}
+                            <span class="album-placeholder" aria-hidden="true">📷</span>
+                        {% endif %}
+                        <span class="album-title">{{ album.title }}</span>
+                        <span class="album-meta">
+                            {% if album.eventDate %}{{ album.eventDate|format_date('long') }} · {% endif %}
+                            {{ stat.count }} {{ stat.count > 1 ? 'souvenirs' : 'souvenir' }}
+                        </span>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    {% if tags is not empty %}
+        <h2>Par thème</h2>
+        <ul class="tags">
+            {% for tag in tags %}
+                <li><a href="{{ path('tag_show', {slug: tag.slug}) }}">{{ tag.name }} <small>{{ tag.mediaCount }}</small></a></li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,15 @@
+<li>
+    <a href="{{ path('media_show', {id: media.id}) }}" class="tile tile-{{ media.type.value }}" title="{{ media.displayTitle }}">
+        {% if media.type.hasThumbnail %}
+            <img src="{{ path('media_thumb', {id: media.id, size: 'small'}) }}" alt="{{ media.displayTitle }}" loading="lazy">
+        {% else %}
+            <span class="tile-icon" aria-hidden="true">🎵</span>
+            <span class="tile-caption">{{ media.displayTitle }}</span>
+        {% endif %}
+        {% if media.type.value == 'video' %}
+            <span class="tile-badge"><span aria-hidden="true">▶</span> {{ media.duration|duration ?: 'Vidéo' }}</span>
+        {% elseif media.type.value == 'audio' and media.duration %}
+            <span class="tile-badge">{{ media.duration|duration }}</span>
+        {% endif %}
+    </a>
+</li>

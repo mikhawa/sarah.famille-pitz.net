@@ -35,6 +35,8 @@ alias dds='php bin/console doctrine:schema:validate'
 alias mm='php bin/console make:migration'
 alias migrate='php bin/console doctrine:migrations:migrate --no-interaction'
 alias dfl='php bin/console doctrine:fixtures:load --no-interaction'
+# --- Créer un admin ---
+pbc app:create-admin sarah@example.com "Papa"
 # --- Tests ---
 alias test='php bin/phpunit --no-coverage'
 alias testv='php bin/phpunit --no-coverage --testdox'
