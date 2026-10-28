@@ -56,7 +56,12 @@ $PHP -r 'var_dump(function_exists("proc_open"));'   # bool(true) attendu
 
 ### Réglages PHP
 
-**PHP → Edit PHP Configs → PHP 8.3** (ou le `php.ini` de `/usr/local/lsws/lsphp83/etc/php/8.3/litespeed/`, **à vérifier**) :
+**PHP → Edit PHP Configs → PHP 8.3**, ou directement le fichier :
+
+- AlmaLinux / Rocky : `/usr/local/lsws/lsphp83/etc/php.ini`, opcache dans `/usr/local/lsws/lsphp83/etc/php.d/10-opcache.ini`
+- Ubuntu : `/usr/local/lsws/lsphp83/etc/php/8.3/litespeed/php.ini` (**à vérifier**)
+
+Valeurs attendues (celles déjà plus élevées, comme `memory_limit = 1024M` ou `post_max_size = 3G`, peuvent rester) :
 
 ```ini
 memory_limit = 512M
