@@ -18,6 +18,11 @@ alias ddo='docker compose down'
 ### ----------------------
 ### Symfony Commands
 ### ----------------------
+
+> Ces alias sont **intégrés à l'image PHP** (`docker/php/bash_aliases` copié en `~/.bash_aliases`) :
+> ils sont disponibles directement après `dphp` (bash). Ils ne le sont pas avec `uphp` (`sh`).
+> Après modification de `docker/php/bash_aliases`, reconstruire l'image avec `dup`.
+
 ```bash
 # Dans l'image PHP 8.3-FPM, dans le bash de WSL après un uphp ou dphp
 # --- Symfony ---
@@ -36,8 +41,7 @@ alias testv='php bin/phpunit --no-coverage --testdox'
 # --- Qualité ---
 alias phpstan='vendor/bin/phpstan analyse src --level=8'
 alias csfix='./vendor/bin/php-cs-fixer fix'
-alias php-cs-fixer
-='./vendor/bin/php-cs-fixer fix'
+alias php-cs-fixer='./vendor/bin/php-cs-fixer fix'
 alias lint='php bin/console lint:twig templates/ && php bin/console lint:yaml config/ && php bin/console lint:container'
 alias asset='php bin/console cache:clear --env=dev && php bin/console importmap:install && php bin/console asset-map:compile --env=dev'
 alias wind='php bin/console tailwind:build'

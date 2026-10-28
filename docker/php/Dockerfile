@@ -40,5 +40,8 @@ RUN groupadd -g ${GID} sarah \
     && useradd -u ${UID} -g ${GID} -m -s /bin/bash sarah \
     && sed -i 's/^user = www-data/user = sarah/; s/^group = www-data/group = sarah/' /usr/local/etc/php-fpm.d/www.conf
 
+# Raccourcis Symfony (voir RACCOURCIS.md), chargés par le ~/.bashrc par défaut de Debian
+COPY --chown=sarah:sarah docker/php/bash_aliases /home/sarah/.bash_aliases
+
 WORKDIR /var/www/html
 USER sarah

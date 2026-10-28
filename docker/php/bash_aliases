@@ -1,0 +1,29 @@
+# Raccourcis Symfony du projet (source : RACCOURCIS.md)
+# Chargés automatiquement par ~/.bashrc dans le conteneur php (docker compose exec php bash)
+
+# --- Symfony ---
+alias pbc='php bin/console'
+alias cc='php bin/console cache:clear'
+# --- Doctrine ---
+alias ddc='php bin/console doctrine:database:create'
+alias ddrop='php bin/console doctrine:database:drop --force'
+alias dds='php bin/console doctrine:schema:validate'
+alias mm='php bin/console make:migration'
+alias migrate='php bin/console doctrine:migrations:migrate --no-interaction'
+alias dfl='php bin/console doctrine:fixtures:load --no-interaction'
+# --- Tests ---
+alias test='php bin/phpunit --no-coverage'
+alias testv='php bin/phpunit --no-coverage --testdox'
+# --- Qualité ---
+alias phpstan='vendor/bin/phpstan analyse src --level=8'
+alias csfix='./vendor/bin/php-cs-fixer fix'
+alias php-cs-fixer='./vendor/bin/php-cs-fixer fix'
+alias lint='php bin/console lint:twig templates/ && php bin/console lint:yaml config/ && php bin/console lint:container'
+alias asset='php bin/console cache:clear --env=dev && php bin/console importmap:install && php bin/console asset-map:compile --env=dev'
+alias wind='php bin/console tailwind:build'
+alias design='php bin/console importmap:install && php bin/console tailwind:build -v && php bin/console cache:clear --env=dev && php bin/console asset-map:compile --env=dev'
+# --- Composer ---
+alias ci='composer install'
+alias cu='composer update'
+alias cval='composer validate --strict'
+alias caudit='composer audit'
