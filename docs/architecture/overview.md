@@ -45,7 +45,8 @@ var/storage/media/                       (var/storage/media_test/ en environneme
 - `MediaFileController` (`/media/{id}/file`, `/media/{id}/thumb/{small|large}`) vérifie `MediaVoter::VIEW` (membre actif)
   puis renvoie une `BinaryFileResponse` (requêtes `Range` : avance rapide dans les vidéos et la musique).
   `?download=1` force le téléchargement. Cache navigateur privé 24 h.
-- En prod (étape 6) : délégation à nginx via `X-Accel-Redirect` vers une `location internal` pour les gros fichiers.
+- Avec `MEDIA_X_ACCEL_PREFIX` (prod et Docker de dev) : délégation à nginx via `X-Accel-Redirect` vers la location
+  `internal` `/_media_internal/` ; PHP ne lit pas le fichier, nginx gère `Range` et `ETag`. Vide (tests) : `BinaryFileResponse`.
 - Suppression d'un média (admin ou autre) : `MediaFileCleanupListener` efface l'original et les miniatures.
 
 ### Traitement à l'envoi (`MediaUploader`)
@@ -113,4 +114,5 @@ Le type est détecté sur le **contenu** du fichier, pas sur son extension.
 3. ✅ **Médias** : entité `Media`, upload privé, nettoyage EXIF/GPS, miniatures, `MediaFileController`, CRUD admin.
 4. ✅ **Front** : fil chronologique, albums, tags, fiche média et lecteurs.
 5. ✅ **Commentaires** : ajout par les membres, modération dans l'admin.
-6. **Prod** : `X-Accel-Redirect`, sauvegardes de la BDD et de `var/storage/`.
+6. ✅ **Prod** : `X-Accel-Redirect`, sauvegardes de la BDD et de `var/storage/` — procédure dans [vps-preprod.md](../devops/vps-preprod.md) ;
+   déploiement uniquement par GitHub Actions (tests puis `bin/deploy.sh` sur le VPS).

@@ -85,6 +85,36 @@ class MediaTest extends WebTestCase
         self::assertResponseHeaderSame('Content-Length', '100');
     }
 
+    public function testFilesCanBeDelegatedToNginx(): void
+    {
+        // Mode prod : PHP ne lit pas le fichier, nginx l'envoie depuis sa location « internal »
+        $_ENV['MEDIA_X_ACCEL_PREFIX'] = '/_media_internal';
+        self::ensureKernelShutdown();
+        $this->client = static::createClient();
+        $this->entityManager = static::getContainer()->get(EntityManagerInterface::class);
+
+        try {
+            $media = $this->storeMedia($this->fixtures->png());
+            $this->client->loginUser($this->createUser('mamy@example.com'));
+
+            $this->client->request('GET', '/media/'.$media->getId().'/file?download=1');
+            self::assertResponseIsSuccessful();
+            self::assertResponseHeaderSame('X-Accel-Redirect', '/_media_internal/originals/'.$media->getStoragePath());
+            self::assertResponseHeaderSame('Content-Type', 'image/png');
+            self::assertStringStartsWith('attachment', (string) $this->client->getResponse()->headers->get('Content-Disposition'));
+            self::assertStringContainsString('private', (string) $this->client->getResponse()->headers->get('Cache-Control'));
+            self::assertSame('', $this->client->getResponse()->getContent());
+
+            $this->client->request('GET', '/media/'.$media->getId().'/thumb/small');
+            self::assertResponseHeaderSame('X-Accel-Redirect', '/_media_internal/'.substr(
+                static::getContainer()->get(MediaStorage::class)->getThumbnailPath($media, 'small'),
+                \strlen(static::getContainer()->getParameter('app.media_storage_dir')) + 1,
+            ));
+        } finally {
+            $_ENV['MEDIA_X_ACCEL_PREFIX'] = '';
+        }
+    }
+
     public function testInactiveMemberCannotReadMedia(): void
     {
         $media = $this->storeMedia($this->fixtures->png());

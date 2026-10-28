@@ -1,0 +1,105 @@
+# Préprod : tests à chaque push et pull request.
+# Prod : déploiement sur le VPS uniquement à la demande (Actions → « Tests et déploiement » → Run workflow, branche main),
+# après les tests de ce même lancement. Un push ne déploie jamais.
+# Secrets à créer dans GitHub (Settings → Environments → production) : voir docs/devops/vps-preprod.md, section 6.
+name: Tests et déploiement
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests (préprod)
+    runs-on: ubuntu-24.04
+    services:
+      db:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=5
+    env:
+      APP_ENV: test
+      # Doctrine ajoute le suffixe _test : base sarah_db_test
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/sarah_db?serverVersion=11.4.10-MariaDB&charset=utf8mb4
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ffmpeg (nettoyage des vidéos, testé par la suite)
+        run: sudo apt-get update -q && sudo apt-get install -yq --no-install-recommends ffmpeg
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, intl, zip, gd, exif
+          ini-values: date.timezone=Europe/Brussels, memory_limit=512M
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Dépendances
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Vérifications statiques
+        run: |
+          composer validate --strict --no-check-publish
+          php bin/console lint:yaml config/ --parse-tags
+          php bin/console lint:twig templates/
+          php bin/console lint:container
+
+      - name: Base de test
+        run: |
+          php bin/console doctrine:database:create --no-interaction
+          php bin/console doctrine:migrations:migrate --no-interaction
+          php bin/console doctrine:schema:validate
+
+      - name: Tests PHPUnit
+        run: php bin/phpunit --no-coverage
+
+  deploy:
+    name: Déploiement (prod)
+    needs: tests
+    # Lancement manuel sur main uniquement (deploy.sh refuse de toute façon un commit absent de origin/main)
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: production
+    # Un seul déploiement à la fois ; un nouveau push attend la fin du précédent
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    steps:
+      - name: Clé SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          # Empreinte du serveur fixée dans les secrets : pas de StrictHostKeyChecking=no
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Mise à jour du VPS
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+        # Côté serveur, cette clé ne peut lancer que bin/deploy.sh, qui reçoit le commit testé
+        run: ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" -o BatchMode=yes "sarah@$DEPLOY_HOST" "$GITHUB_SHA"
+
+      - name: Nettoyage de la clé
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

@@ -45,6 +45,12 @@ docker compose exec php php bin/console app:create-admin moi@example.com "Papa" 
 docker compose exec php php bin/phpunit                                          # tests
 ```
 
+### Envoi des médias par nginx
+
+Comme en prod, `docker-compose.yml` définit `MEDIA_X_ACCEL_PREFIX=/_media_internal` : Symfony vérifie les droits
+puis nginx envoie le fichier (location `internal` de `docker/nginx/default.conf`). Les tests forcent ce préfixe à vide
+(`phpunit.dist.xml`) et vérifient les deux modes.
+
 ### Base de test
 
 Les tests utilisent `sarah_db_test` (suffixe `_test` ajouté par Doctrine). Sur un nouveau poste :
