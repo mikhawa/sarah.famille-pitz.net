@@ -44,6 +44,13 @@ Pour **toute tâche modifiant du code**, créer un fichier dans `.claude-tasks/`
 - **Contenu minimal** : modèle utilisé, justification, fichiers modifiés, résumé
 - Vérifier le dernier numéro existant dans tous les sous-dossiers de `.claude-tasks/` avant de créer un fichier
 
+### Journal de développement (documentations-dev/)
+En plus de la fiche `.claude-tasks/`, toute tâche modifiant du code ajoute une fiche dans `documentations-dev/` :
+- **Format** : `NNN-YYYY-MM-DD_HH-MM-moteur-sujet-court.md` (moteur : `haiku`, `sonnet` ou `opus`)
+- **Numérotation** : propre à `documentations-dev/`, sur 3 chiffres ; lister le dossier avant de créer une fiche
+- **Modèle** : titre `# Phase X : …`, date, Objectif, Actions realisees, Fichiers crees, Fichiers modifies,
+  Verifications (tableau OK / KO), Problemes rencontres — voir les fiches existantes
+
 ## Contexte rapide
 - Architecture : MVC + couche Service + Repository pattern
 - Auth : Symfony Security (voters custom)

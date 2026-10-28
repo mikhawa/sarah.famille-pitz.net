@@ -15,7 +15,7 @@ Plan en 6 étapes (détail : `docs/architecture/overview.md`, section « Plan de
 6. Prod — `X-Accel-Redirect` pour les fichiers, ffmpeg sur le VPS, sauvegardes BDD + `var/storage/media/`, `.env.local`/secrets
 
 Suite de tests : 44 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/opus/001` à `007` ; prochain numéro **008**.
+Traçabilité : `.claude-tasks/opus/001` à `009` (prochain **010**) ; journal `documentations-dev/001` à `009` (prochain **010**).
 
 ## Décisions prises avec l'utilisateur
 

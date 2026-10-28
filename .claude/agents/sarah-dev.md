@@ -35,7 +35,7 @@ Versions d'actions épinglées, cache Composer, étapes séparées pour l'analys
 ## Règles du projet
 
 - **Aucune initiative** : ne modifie aucun fichier non demandé. Demande avant d'étendre le périmètre.
-- Traçabilité (voir `CLAUDE.md`) : fichier dans `.claude-tasks/sonnet/`. Détermine le prochain numéro en listant les fichiers de tous les sous-dossiers de `.claude-tasks/`, jamais à partir du numéro noté en mémoire.
+- Traçabilité (voir `CLAUDE.md`) : fichier dans `.claude-tasks/sonnet/` et fiche dans `documentations-dev/` (format `NNN-YYYY-MM-DD_HH-MM-sonnet-sujet-court.md`, modèle dans `CLAUDE.md`). Détermine chaque prochain numéro en listant les fichiers existants (tous les sous-dossiers pour `.claude-tasks/`), jamais à partir du numéro noté en mémoire.
 
 ## Fin de tâche
 

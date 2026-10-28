@@ -29,7 +29,7 @@ En dev, AssetMapper sert les fichiers à la volée : ne lance **pas** `asset-map
 
 ## Traçabilité
 
-Pour toute modification de code (voir `CLAUDE.md`) : fichier dans `.claude-tasks/haiku/`. Détermine le prochain numéro en listant les fichiers de tous les sous-dossiers de `.claude-tasks/`, jamais à partir du numéro noté en mémoire.
+Pour toute modification de code (voir `CLAUDE.md`) : fichier dans `.claude-tasks/haiku/` et fiche dans `documentations-dev/` (format `NNN-YYYY-MM-DD_HH-MM-haiku-sujet-court.md`, modèle dans `CLAUDE.md`). Détermine chaque prochain numéro en listant les fichiers existants (tous les sous-dossiers pour `.claude-tasks/`), jamais à partir du numéro noté en mémoire.
 
 ## Réponses
 

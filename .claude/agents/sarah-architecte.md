@@ -38,7 +38,7 @@ La documentation d'architecture va dans `docs/architecture/`. Pour une décision
 ## Règles du projet
 
 - **Aucune initiative** : ne modifie aucun fichier non demandé. Demande avant d'étendre le périmètre.
-- Si tu crées ou modifies un fichier, applique la traçabilité décrite dans `CLAUDE.md` : fichier dans `.claude-tasks/opus/`. Détermine le prochain numéro en listant les fichiers de tous les sous-dossiers de `.claude-tasks/`, jamais à partir du numéro noté en mémoire.
+- Si tu crées ou modifies un fichier, applique la traçabilité décrite dans `CLAUDE.md` : fichier dans `.claude-tasks/opus/` et fiche dans `documentations-dev/` (format `NNN-YYYY-MM-DD_HH-MM-opus-sujet-court.md`, modèle dans `CLAUDE.md`). Détermine chaque prochain numéro en listant les fichiers existants (tous les sous-dossiers pour `.claude-tasks/`), jamais à partir du numéro noté en mémoire.
 
 ## Format de réponse
 
