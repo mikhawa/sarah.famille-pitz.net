@@ -28,7 +28,7 @@ Rien n'est public : tout le site est derrière une connexion.
 - L'admin connecté ne peut ni se retirer ses droits, ni se désactiver, ni supprimer son propre compte.
 - E-mails envoyés de façon synchrone (pas encore de worker Messenger).
 - Limitation des tentatives de connexion (`login_throttling`).
-- Voters : `MediaVoter` (VIEW, COMMENT), `CommentVoter` (EDIT, DELETE : auteur ou admin).
+- Voters : `MediaVoter` (VIEW, COMMENT : membre actif), `CommentVoter` (DELETE : auteur ou admin).
 - Non-indexation : en-tête `X-Robots-Tag: noindex, nofollow` et `robots.txt` qui interdit tout.
 - **Protection de l'enfant** : les métadonnées EXIF sensibles (GPS notamment) sont supprimées des photos à l'upload ;
   seule la date de prise de vue est conservée en base.
@@ -45,7 +45,8 @@ var/storage/media/                       (var/storage/media_test/ en environneme
 - `MediaFileController` (`/media/{id}/file`, `/media/{id}/thumb/{small|large}`) vérifie `MediaVoter::VIEW` (membre actif)
   puis renvoie une `BinaryFileResponse` (requêtes `Range` : avance rapide dans les vidéos et la musique).
   `?download=1` force le téléchargement. Cache navigateur privé 24 h.
-- En prod (étape 6) : délégation à nginx via `X-Accel-Redirect` vers une `location internal` pour les gros fichiers.
+- Avec `MEDIA_X_ACCEL_PREFIX` (prod et Docker de dev) : délégation à nginx via `X-Accel-Redirect` vers la location
+  `internal` `/_media_internal/` ; PHP ne lit pas le fichier, nginx gère `Range` et `ETag`. Vide (tests) : `BinaryFileResponse`.
 - Suppression d'un média (admin ou autre) : `MediaFileCleanupListener` efface l'original et les miniatures.
 
 ### Traitement à l'envoi (`MediaUploader`)
@@ -93,11 +94,25 @@ Le type est détecté sur le **contenu** du fichier, pas sur son extension.
 - Dates en français via `twig/intl-extra` (`format_date`) ; filtre Twig `duration` (`App\Twig\AppExtension`).
 - Twig + AssetMapper/ImportMap + Stimulus/Turbo (pas de build Node) ; feuille de style unique `assets/styles/app.css`.
 
+## Commentaires
+
+- Formulaire « petit mot » sous chaque média (`media_show` en GET et POST, `CommentType`, CSRF du composant Form) :
+  succès → redirection 303 vers `#comment-{id}`, erreur → 422 (attendu par Turbo).
+- Affichés du plus ancien au plus récent ; texte échappé, retours à la ligne conservés ; 2000 caractères maximum.
+- Un membre supprime son propre commentaire (`POST /comments/{id}/delete`, jeton CSRF `delete-comment-{id}`) ;
+  l'admin peut supprimer tous les commentaires. Pas de modification du texte après coup.
+- Modération (`CommentCrudController`, `/admin/comment`) : liste, filtres (masqué, auteur, média), interrupteur « Masqué ».
+  L'admin ne peut ni écrire ni réécrire un commentaire. Un commentaire masqué reste en base, visible seulement des admins
+  (signalé « Masqué par l'administration »).
+- Suppression d'un média → ses commentaires aussi (`ON DELETE CASCADE`) ; suppression d'un compte → commentaires
+  conservés, affichés « Ancien membre » (`ON DELETE SET NULL`).
+
 ## Plan de réalisation
 
 1. ✅ **Authentification** : entité `User`, connexion, `access_control`, commande `app:create-admin`.
 2. ✅ **Administration** : EasyAdmin, CRUD utilisateurs (avec invitation), albums, tags.
 3. ✅ **Médias** : entité `Media`, upload privé, nettoyage EXIF/GPS, miniatures, `MediaFileController`, CRUD admin.
 4. ✅ **Front** : fil chronologique, albums, tags, fiche média et lecteurs.
-5. **Commentaires** : ajout par les membres, modération dans l'admin.
-6. **Prod** : `X-Accel-Redirect`, sauvegardes de la BDD et de `var/storage/`.
+5. ✅ **Commentaires** : ajout par les membres, modération dans l'admin.
+6. ✅ **Prod** : `X-Accel-Redirect`, sauvegardes de la BDD et de `var/storage/` — procédure dans [vps-preprod.md](../devops/vps-preprod.md) ;
+   déploiement uniquement par GitHub Actions (tests puis `bin/deploy.sh` sur le VPS).

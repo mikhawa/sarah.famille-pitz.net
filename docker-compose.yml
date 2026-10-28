@@ -19,6 +19,8 @@ services:
     environment:
       DATABASE_URL: "mysql://sarah_user:sarah_pass@db:3306/sarah_db?serverVersion=11.4.10-MariaDB&charset=utf8mb4"
       MAILER_DSN: "smtp://mailpit:1025"
+      # Fichiers médias envoyés par nginx, comme en prod (location /_media_internal/ de docker/nginx/default.conf)
+      MEDIA_X_ACCEL_PREFIX: "/_media_internal"
 
   nginx:
     image: nginx:alpine

@@ -11,11 +11,18 @@ Plan en 6 étapes (détail : `docs/architecture/overview.md`, section « Plan de
 3. ✅ Médias — envoi groupé privé, nettoyage EXIF/GPS (photos GD, vidéos ffmpeg), miniatures, `MediaFileController` + `MediaVoter`
 4. ✅ Front — fil chronologique par mois (filtre par type), albums + thèmes, pages tag, fiche média (lecteurs,
    précédent/suivant, clavier/glissement), pagination 24/page ; déconnexion des comptes désactivés
-5. ⏭️ **Commentaires (prochaine étape)** — entité `Comment`, ajout par les membres, `CommentVoter`, modération (`is_hidden`) dans l'admin
-6. Prod — `X-Accel-Redirect` pour les fichiers, ffmpeg sur le VPS, sauvegardes BDD + `var/storage/media/`, `.env.local`/secrets
+5. ✅ Commentaires — entité `Comment`, ajout par les membres, `CommentVoter`, modération (`is_hidden`) dans l'admin — « petits mots » sous chaque média, suppression par l'auteur, interrupteur « Masqué » dans `/admin/comment`
+6. ✅ Prod (préparée, **pas encore déployée**) — `X-Accel-Redirect` (`MEDIA_X_ACCEL_PREFIX`, actif aussi en Docker dev),
+   `bin/backup.sh`, configs `docs/devops/prod/`, procédure `docs/devops/vps-preprod.md`, logs prod en fichiers tournants
+   **Déploiement uniquement par GitHub, jamais automatique** (décisions de l'utilisateur) : `.github/workflows/ci-deploy.yml`
+   = tests (préprod) à chaque push/PR ; déploiement seulement par « Run workflow » (`workflow_dispatch`) sur `main`,
+   après les tests → SSH → `bin/deploy.sh <sha>` (clé limitée par `command=` dans authorized_keys)
 
-Suite de tests : 44 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/opus/001` à `009` (prochain **010**) ; journal `documentations-dev/001` à `009` (prochain **010**).
+À faire ensuite : installation réelle du VPS + secrets GitHub (section 6 de vps-preprod.md), premier passage du
+workflow sur GitHub (jamais exécuté), design adapté à Sarah (6 ans).
+
+Suite de tests : 55 tests verts (`docker compose exec php php bin/phpunit`).
+Traçabilité : `.claude-tasks/opus/001` à `011` (prochain **012**) ; journal `documentations-dev/001` à `011` (prochain **012**).
 
 ## Décisions prises avec l'utilisateur
 
@@ -57,4 +64,9 @@ Les médias envoyés (`var/storage/media/`) et la base ne sont pas dans git : il
 - Symfony Flex : `extra.symfony.docker: false` pour ne pas générer de `compose.yaml` concurrent
 - HEIC refusé (GD ne le lit pas) ; vidéos non transcodées (HEVC pas lisible partout)
 - Un compte désactivé gardait sa session : `UserChecker` ne bloque que la connexion → `DeactivatedUserSubscriber`
+- `#[IsCsrfTokenValid]` : un jeton invalide renvoie vers `/login` (exception d'authentification) ; vérifier le jeton dans l'action pour obtenir un 403
+- `TextareaType` vide → `null` : mettre `empty_data: ''` sur un champ `string` non nullable
+- Variables d'environnement du conteneur PHP (`docker-compose.yml`) : prioritaires sur `.env.test` → les neutraliser dans `phpunit.dist.xml` avec `<env … force="true"/>` (`<server>` ne suffit pas : Symfony lit `$_ENV` d'abord)
+- Tests : `MAILER_DSN=null://null` forcé dans `phpunit.dist.xml`, sinon ils envoient à Mailpit (absent sur GitHub → échecs SMTP)
+- CSRF sans état (login, formulaires) : pour tester avec curl, cookie `csrf-token_<jeton>=csrf-token` + champ `<jeton>` (≥ 24 caractères) + en-tête `Origin`
 - Fins de ligne : l'IDE Windows convertit en CRLF, le dépôt est en LF

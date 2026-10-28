@@ -458,3 +458,101 @@ h2 {
         display: none;
     }
 }
+
+/* --- Commentaires --- */
+
+.comments {
+    max-width: 800px;
+    margin: 2rem auto 0;
+}
+
+.comment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0 0 1.5rem;
+    padding: 0;
+    list-style: none;
+}
+
+.comment {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+}
+
+.comment-hidden {
+    opacity: 0.6;
+    border: 2px dashed var(--border);
+}
+
+.comment-meta {
+    margin: 0 0 0.25rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.comment-meta strong {
+    color: var(--text);
+}
+
+.comment-badge {
+    margin-left: 0.5rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    font-size: 0.8rem;
+}
+
+.comment-content {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.comment-delete {
+    margin-top: 0.4rem;
+    text-align: right;
+}
+
+.comment-delete button {
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.85rem;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.comments-empty {
+    color: var(--muted);
+}
+
+.comment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.comment-form textarea {
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font: inherit;
+    resize: vertical;
+}
+
+.comment-form .button {
+    align-self: flex-end;
+    border: 0;
+    font: inherit;
+    cursor: pointer;
+}
+
+.comment-form ul {
+    margin: 0;
+    padding-left: 1.2rem;
+    color: #9b1c1c;
+}

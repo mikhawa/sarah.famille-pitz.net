@@ -15,6 +15,10 @@
         <ini name="error_reporting" value="-1" />
         <server name="APP_ENV" value="test" force="true" />
         <server name="SHELL_VERBOSITY" value="-1" />
+        <!-- Le conteneur PHP active X-Accel-Redirect : les tests utilisent l'envoi par PHP (voir MediaTest) -->
+        <env name="MEDIA_X_ACCEL_PREFIX" value="" force="true" />
+        <!-- Aucun e-mail réellement envoyé en test (pas de Mailpit sur GitHub) : les assertions lisent les messages en mémoire -->
+        <env name="MAILER_DSN" value="null://null" force="true" />
     </php>
 
     <testsuites>

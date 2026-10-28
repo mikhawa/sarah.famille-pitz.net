@@ -69,10 +69,12 @@ Jetons du `symfonycasts/reset-password-bundle` (invitation et mot de passe oubli
 |------------|---------------|-------------------------------------|
 | id         | int PK        |                                     |
 | media_id   | FK media      | `ON DELETE CASCADE`                 |
-| author_id  | FK user       |                                     |
-| content    | text          |                                     |
+| author_id  | FK user null  | `ON DELETE SET NULL` : « Ancien membre » |
+| content    | text          | 2000 caractères maximum (validation) |
 | is_hidden  | bool          | masqué par l'admin (modération)     |
 | created_at | datetime_immutable |                                |
+
+Index : `(media_id, created_at)`.
 
 ## Relations
 

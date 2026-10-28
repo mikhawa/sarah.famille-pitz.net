@@ -20,3 +20,5 @@ docker compose exec php composer install
 ```
 
 Détails : [docs/devops/docker-setup.md](docs/devops/docker-setup.md)
+
+Mise en production sur le VPS : [docs/devops/vps-preprod.md](docs/devops/vps-preprod.md)

@@ -3,6 +3,7 @@
 namespace App\Controller\Admin;
 
 use App\Entity\Album;
+use App\Entity\Comment;
 use App\Entity\Media;
 use App\Entity\Tag;
 use App\Entity\User;
@@ -31,6 +32,7 @@ class DashboardController extends AbstractDashboardController
                 'Comptes' => $this->entityManager->getRepository(User::class)->count(),
                 'Albums' => $this->entityManager->getRepository(Album::class)->count(),
                 'Tags' => $this->entityManager->getRepository(Tag::class)->count(),
+                'Commentaires' => $this->entityManager->getRepository(Comment::class)->count(),
             ],
         ]);
     }
@@ -53,6 +55,7 @@ class DashboardController extends AbstractDashboardController
 
         yield MenuItem::section('Famille');
         yield MenuItem::linkTo(UserCrudController::class, 'Comptes', 'fa fa-users');
+        yield MenuItem::linkTo(CommentCrudController::class, 'Commentaires', 'fa fa-comments');
 
         yield MenuItem::section();
         yield MenuItem::linkToRoute('Retour au site', 'fa fa-arrow-left', 'app_home');

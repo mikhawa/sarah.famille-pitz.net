@@ -65,6 +65,18 @@ class MediaStorage
         return \sprintf('%s/thumbs/%s/%s_%s.webp', $this->rootDir, $info['dirname'], $info['filename'], $size);
     }
 
+    /**
+     * Chemin d'un fichier du stockage relatif à la racine, segments encodés pour une URL (ex. /originals/2026/10/<uuid>.jpg)
+     */
+    public function getRelativePath(string $path): string
+    {
+        if (!str_starts_with($path, $this->rootDir.'/')) {
+            throw new \InvalidArgumentException(\sprintf('Fichier hors du stockage des médias : "%s".', $path));
+        }
+
+        return implode('/', array_map(rawurlencode(...), explode('/', substr($path, \strlen($this->rootDir)))));
+    }
+
     public function ensureDirectoryFor(string $path): void
     {
         $this->filesystem->mkdir(\dirname($path));
