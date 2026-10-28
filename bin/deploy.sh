@@ -12,7 +12,7 @@
 #   PHP_BIN            PHP en ligne de commande          (défaut : php ; CyberPanel : /usr/local/lsws/lsphp83/bin/php)
 #   COMPOSER_BIN       chemin de composer                (défaut : celui du PATH)
 #   DEPLOY_RELOAD_CMD  commande de rechargement de PHP   (défaut : aucune ; nginx + PHP-FPM :
-#                      "sudo -n /usr/bin/systemctl reload php8.3-fpm")
+#                      "sudo -n /usr/bin/systemctl reload php-fpm")
 
 set -euo pipefail
 

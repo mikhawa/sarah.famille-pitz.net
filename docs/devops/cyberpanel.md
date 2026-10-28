@@ -36,17 +36,26 @@ GitHub (main) ──Run workflow──► tests ──► SSH <user>@VPS ──�
 
 ```bash
 # ffmpeg est obligatoire : sans lui, les vidéos sont refusées (GPS non supprimable)
-apt install ffmpeg git unzip rsync          # Ubuntu
-# AlmaLinux : dnf install epel-release && dépôt RPM Fusion, puis dnf install ffmpeg git unzip rsync
+# AlmaLinux 9
+dnf install -y epel-release
+dnf config-manager --set-enabled crb
+dnf install -y https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm
+dnf install -y ffmpeg git unzip rsync
+# Ubuntu : apt install ffmpeg git unzip rsync
 
 $PHP -v                                     # PHP 8.3.x
 $PHP -m | grep -iE 'pdo_mysql|intl|zip|gd|exif|mbstring|xml|curl|opcache'
 ```
 
-Extensions manquantes : **PHP → Install Extensions** dans CyberPanel (ex. `lsphp83-intl`), ou `apt install lsphp83-intl`.
+Extensions manquantes : **PHP → Install Extensions** dans CyberPanel (ex. `lsphp83-intl`), ou `dnf install lsphp83-intl`
+(Ubuntu : `apt install lsphp83-intl`).
 GD doit lire le **WebP et le JPEG** : `$PHP -r 'print_r(gd_info());'` (« WebP Support » et « JPEG Support » à 1).
 
 **Composer** : `command -v composer`, sinon installation dans `/usr/local/bin/composer` (https://getcomposer.org/download/).
+
+**SELinux** (AlmaLinux) : `getenforce`. L'installateur de CyberPanel le désactive en général ; s'il affiche
+`Enforcing` et qu'une page, un envoi de vidéo ou un e-mail échoue sans explication, `ausearch -m avc -ts recent`
+montre ce qui a été bloqué (voir aussi la section SELinux de [vps-preprod.md](vps-preprod.md#selinux)).
 
 **`proc_open` doit être autorisé** (ffmpeg est lancé par Symfony Process) :
 

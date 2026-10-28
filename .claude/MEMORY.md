@@ -18,7 +18,8 @@ Plan en 6 étapes (détail : `docs/architecture/overview.md`, section « Plan de
    = tests (préprod) à chaque push/PR ; déploiement seulement par « Run workflow » (`workflow_dispatch`) sur `main`,
    après les tests → SSH → `bin/deploy.sh <sha>` (clé limitée par `command=` dans authorized_keys)
 
-Le VPS est sous **CyberPanel** (OpenLiteSpeed, lsphp83, un utilisateur Linux par site) : procédure
+Le VPS est sous **AlmaLinux 9** + **CyberPanel** (OpenLiteSpeed, lsphp83, un utilisateur Linux par site ;
+`vps-preprod.md` = variante nginx, adaptée aussi à AlmaLinux 9 : dnf, Remi, RPM Fusion, SELinux) : procédure
 `docs/devops/cyberpanel.md` ; `MEDIA_X_ACCEL_PREFIX` vide (pas de X-Accel), `.deploy.env` (PHP_BIN, COMPOSER_BIN),
 secret GitHub `DEPLOY_USER`, racine web `<home>/app/public` (vHost Conf), `public/.htaccess`.
 
@@ -26,7 +27,7 @@ secret GitHub `DEPLOY_USER`, racine web `<home>/app/public` (vHost Conf), `publi
 workflow sur GitHub (jamais exécuté), design adapté à Sarah (6 ans).
 
 Suite de tests : 58 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/opus/001` à `015` (prochain **016**) ; journal `documentations-dev/001` à `015` (prochain **016**).
+Traçabilité : `.claude-tasks/opus/001` à `016` (prochain **017**) ; journal `documentations-dev/001` à `016` (prochain **017**).
 
 ## Décisions prises avec l'utilisateur
 
