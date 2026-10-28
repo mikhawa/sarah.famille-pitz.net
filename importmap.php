@@ -16,7 +16,6 @@ return [
         'path' => './assets/app.js',
         'entrypoint' => true,
     ],
-    // Administration EasyAdmin : thème et envoi des médias par lots
     'admin' => [
         'path' => './assets/admin.js',
         'entrypoint' => true,
@@ -29,5 +28,15 @@ return [
     ],
     '@hotwired/turbo' => [
         'version' => '8.0.23',
+    ],
+    'photoswipe' => [
+        'version' => '5.4.4',
+    ],
+    'photoswipe/lightbox' => [
+        'version' => '5.4.4',
+    ],
+    'photoswipe/dist/photoswipe.css' => [
+        'version' => '5.4.4',
+        'type' => 'css',
     ],
 ];

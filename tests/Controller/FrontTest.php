@@ -182,6 +182,41 @@ class FrontTest extends WebTestCase
         self::assertResponseStatusCodeSame(404);
     }
 
+    public function testPhotosOpenInTheLightbox(): void
+    {
+        $large = $this->createMedia(MediaType::Photo, 'Grande', '2025-08-03 10:00');
+        $large->setDimensions(4000, 3000);
+        $small = $this->createMedia(MediaType::Photo, 'Petite', '2025-08-02 10:00');
+        $small->setDimensions(800, 600);
+        $gif = $this->createMedia(MediaType::Photo, 'Animée', '2025-08-01 10:00', mimeType: 'image/gif');
+        $gif->setDimensions(320, 240);
+        $unknown = $this->createMedia(MediaType::Photo, 'Sans dimensions', '2025-07-31 10:00');
+        $video = $this->createMedia(MediaType::Video, 'Vidéo', '2025-07-30 10:00', mimeType: 'video/mp4');
+        $video->setDimensions(1920, 1080);
+        $this->entityManager->flush();
+        $this->loginMember();
+
+        $crawler = $this->client->request('GET', '/');
+        self::assertCount(1, $crawler->filter('[data-controller="lightbox"]'));
+        $tile = static fn (Media $m) => $crawler->filter('a.tile[href="/media/'.$m->getId().'"]');
+
+        // Grande miniature réduite à 1600 px de large, hauteur proportionnelle ; le lien reste la fiche
+        self::assertSame('/media/'.$large->getId().'/thumb/large', $tile($large)->attr('data-pswp-src'));
+        self::assertSame(['1600', '1200'], [$tile($large)->attr('data-pswp-width'), $tile($large)->attr('data-pswp-height')]);
+        // Jamais agrandie
+        self::assertSame(['800', '600'], [$tile($small)->attr('data-pswp-width'), $tile($small)->attr('data-pswp-height')]);
+        // GIF : l'original, pour garder l'animation
+        self::assertSame('/media/'.$gif->getId().'/file', $tile($gif)->attr('data-pswp-src'));
+        // Dimensions inconnues ou vidéo : simple lien vers la fiche
+        self::assertNull($tile($unknown)->attr('data-pswp-src'));
+        self::assertNull($tile($video)->attr('data-pswp-src'));
+
+        $crawler = $this->client->request('GET', '/media/'.$large->getId());
+        $photo = $crawler->filter('.player[data-controller="lightbox"] a[data-lightbox-current]');
+        self::assertSame('/media/'.$large->getId().'/file', $photo->attr('href'));
+        self::assertSame('/media/'.$large->getId().'/thumb/large', $photo->attr('data-pswp-src'));
+    }
+
     public function testMediaNavigationFollowsTheListOrder(): void
     {
         $album = $this->createAlbum('Noël', 'noel');

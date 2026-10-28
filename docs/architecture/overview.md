@@ -94,6 +94,10 @@ Le type est détecté sur le **contenu** du fichier, pas sur son extension.
 - Fiche média : précédent/suivant dans l'album du média (ordre de l'album), sinon dans le fil ;
   flèches du clavier et glissement du doigt (contrôleur Stimulus `media-nav`).
 - Album sans couverture choisie : première photo ou vidéo de l'album.
+- Visionneuse plein écran des photos : PhotoSwipe 5 (MIT, via importmap), contrôleur Stimulus `lightbox`. Dans les grilles,
+  un clic sur une photo l'ouvre (glisser, zoomer, flèches) avec un bouton 💬 vers la fiche ; sur la fiche, un clic sur la
+  photo l'agrandit. Image affichée : grande miniature (1600 px, dimensions via la fonction Twig `thumb_size`), original
+  pour les GIF (animation). Sans JavaScript ou sans dimensions connues, les liens restent des liens normaux.
 - Un membre désactivé pendant qu'il est connecté est déconnecté à sa requête suivante (`DeactivatedUserSubscriber`).
 - Dates en français via `twig/intl-extra` (`format_date`) ; filtre Twig `duration` (`App\Twig\AppExtension`).
 - Twig + AssetMapper/ImportMap + Stimulus/Turbo (pas de build Node) ; feuille de style unique `assets/styles/app.css`.

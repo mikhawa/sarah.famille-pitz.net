@@ -13,7 +13,7 @@
     {% if medias.items is empty %}
         <p class="empty">Aucun souvenir avec ce thème pour l'instant.</p>
     {% else %}
-        <ul class="grid">
+        <ul class="grid" data-controller="lightbox">
             {% for media in medias.items %}
                 {{ include('media/_tile.html.twig') }}
             {% endfor %}

@@ -20,6 +20,8 @@
             {% set months = months|merge({(key): (months[key] ?? [])|merge([media])}) %}
         {% endfor %}
 
+        {# Une seule visionneuse pour toute la page : on glisse d'un mois à l'autre #}
+        <div data-controller="lightbox">
         {% for medias_of_month in months %}
             <section class="month">
                 <h2>{{ (medias_of_month|first).sortDate|format_date(pattern: 'MMMM y')|capitalize }}</h2>
@@ -30,6 +32,7 @@
                 </ul>
             </section>
         {% endfor %}
+        </div>
 
         {{ include('_pagination.html.twig', {route: 'app_home', params: current_type ? {type: current_type.value} : {}}) }}
     {% endif %}
