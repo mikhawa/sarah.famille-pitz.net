@@ -173,22 +173,81 @@ statiques (CSS, JS) répondent 403.
 
 ## 6. Déploiement depuis GitHub
 
-Identique à [vps-preprod.md, section 6](vps-preprod.md#6-déploiement-par-github), avec ces différences :
+Principe identique à [vps-preprod.md, section 6](vps-preprod.md#6-déploiement-par-github). Le dépôt GitHub est
+**public** : le VPS fait `git clone` / `git fetch` sans clé. Une seule clé est à créer : celle avec laquelle
+**GitHub Actions se connecte au VPS**, limitée au lancement de `bin/deploy.sh`.
 
-- La clé publique de déploiement va dans `<home>/.ssh/authorized_keys` (`chmod 700 ~/.ssh`, `chmod 600` le fichier) :
+Prérequis : sections 3 (accès SSH de l'utilisateur du site) et 4 (code dans `<home>/app`) terminées.
 
-  ```
-  command="/home/sarah.famille-pitz.net/app/bin/deploy.sh",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty ssh-ed25519 AAAA… github-deploy-sarah
-  ```
+### 6.1 Devenir l'utilisateur du site (depuis root) — et le vérifier
+
+```bash
+SITEUSER=$(stat -c %U /home/sarah.famille-pitz.net/public_html)   # utilisateur créé par CyberPanel
+echo "$SITEUSER"                                                   # ne doit PAS être root
+ls -l /home/sarah.famille-pitz.net/app/bin/deploy.sh               # le script doit exister
+su - "$SITEUSER" -s /bin/bash
+whoami          # l'utilisateur du site → secret DEPLOY_USER
+echo "$HOME"    # /home/sarah.famille-pitz.net
+```
+
+> **Piège rencontré** : lancer la suite en root met la clé dans `/root/.ssh/authorized_keys` avec
+> `command="/root/app/bin/deploy.sh"` (« No such file or directory » au test). Nettoyer en root :
+> `sed -i '/github-deploy-sarah/d' /root/.ssh/authorized_keys && rm -f /root/deploy_sarah /root/deploy_sarah.pub`,
+> puis reprendre en tant qu'utilisateur du site. Si `stat` affiche `root`, prendre le nom indiqué dans
+> CyberPanel → *Websites* → *List Websites*.
+
+### 6.2 Créer la clé et l'autoriser, limitée à `deploy.sh`
+
+```bash
+mkdir -p ~/.ssh && chmod 700 ~/.ssh
+ssh-keygen -t ed25519 -N "" -C "github-deploy-sarah" -f ~/deploy_sarah
+echo "command=\"$HOME/app/bin/deploy.sh\",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty $(cat ~/deploy_sarah.pub)" >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+restorecon -Rv ~/.ssh 2>/dev/null   # seulement utile si SELinux est actif
+```
+
+### 6.3 Tester
+
+```bash
+ssh -i ~/deploy_sarah -p 22 -o StrictHostKeyChecking=accept-new "$USER@localhost" test
+```
+
+Réponse attendue : **`Usage : deploy.sh <sha du commit sur 40 caractères>`** (la clé est acceptée et ne peut lancer
+que `deploy.sh`). Une demande de mot de passe : droits de `~/.ssh` ou shell de l'utilisateur (section 3).
+Adapter `-p 22` si le port SSH est différent.
+
+### 6.4 Valeurs pour GitHub, puis suppression de la clé privée
+
+```bash
+cat ~/deploy_sarah                                      # → DEPLOY_SSH_KEY (avec les lignes BEGIN / END)
+ssh-keyscan -p 22 sarah.famille-pitz.net 2>/dev/null    # → DEPLOY_KNOWN_HOSTS
+rm ~/deploy_sarah ~/deploy_sarah.pub                    # GitHub seul garde la clé privée
+```
+
+Dans `ssh-keyscan`, utiliser **exactement la valeur de `DEPLOY_HOST`**. Domaine derrière Cloudflare en mode proxy
+(nuage orange) : SSH ne passe pas, utiliser l'adresse IP du VPS dans les deux. Lancé sur le serveur lui-même,
+`ssh-keyscan` donne forcément la bonne empreinte.
+
+### 6.5 Secrets GitHub
+
+Dépôt → **Settings → Environments** → créer `production` → **Add environment secret** :
+
+| Secret               | Valeur                                                           |
+|----------------------|------------------------------------------------------------------|
+| `DEPLOY_SSH_KEY`     | clé privée (`cat ~/deploy_sarah`, étape 6.4)                     |
+| `DEPLOY_KNOWN_HOSTS` | sortie de `ssh-keyscan` (étape 6.4)                              |
+| `DEPLOY_HOST`        | `sarah.famille-pitz.net` ou l'IP (la même que pour `ssh-keyscan`) |
+| `DEPLOY_USER`        | résultat de `whoami` (étape 6.1)                                 |
+| `DEPLOY_PORT`        | seulement si le port SSH n'est pas 22                            |
+
+### 6.6 Mettre en ligne
+
+GitHub → **Actions** → « Tests et déploiement » → **Run workflow** → branche `main`. Les tests sont rejoués ; s'ils
+passent, le VPS sauvegarde puis installe le dernier commit de `main`.
 
 - **Pas de règle sudoers** : aucun redémarrage n'est nécessaire (opcache relit les fichiers modifiés).
-- Secrets GitHub (Settings → Environments → `production`) : `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`, `DEPLOY_HOST`,
-  `DEPLOY_PORT` si le port SSH n'est pas 22, et **`DEPLOY_USER` = `<user>`**.
-- Pare-feu : CyberPanel active souvent un pare-feu (*Security → Firewall*) ; le port SSH doit rester ouvert
-  aux serveurs de GitHub Actions.
-
-Mettre en ligne : GitHub → **Actions** → « Tests et déploiement » → **Run workflow** → branche `main`.
-Les tests sont rejoués ; s'ils passent, le VPS sauvegarde puis installe le dernier commit de `main`.
+- Échec SSH : pare-feu de CyberPanel (*Security → Firewall*) — le port SSH doit être joignable depuis Internet
+  (GitHub Actions n'a pas d'adresse IP fixe) — puis `DEPLOY_USER`, `DEPLOY_PORT`, `DEPLOY_KNOWN_HOSTS`.
 
 ## 7. Sauvegardes
 

@@ -1,6 +1,6 @@
 # Mémoire du projet — état d'avancement
 
-Dernière mise à jour : 2026-10-28 — branche `feature/02-admin-suite`
+Dernière mise à jour : 2026-10-28 — branche `feature/04-design-admin`
 
 ## Où on en est
 
@@ -23,11 +23,26 @@ Le VPS est sous **AlmaLinux 9** + **CyberPanel** (OpenLiteSpeed, lsphp83, un uti
 `docs/devops/cyberpanel.md` ; `MEDIA_X_ACCEL_PREFIX` vide (pas de X-Accel), `.deploy.env` (PHP_BIN, COMPOSER_BIN),
 secret GitHub `DEPLOY_USER`, racine web `<home>/app/public` (vHost Conf), `public/.htaccess`.
 
-À faire ensuite : installation réelle du VPS + secrets GitHub (section 6 de vps-preprod.md), premier passage du
-workflow sur GitHub (jamais exécuté), design adapté à Sarah (6 ans).
+### Installation du VPS (en cours, suivie avec l'utilisateur, procédure `docs/devops/cyberpanel.md`)
+
+- ✅ `php.ini` de lsphp83 (`/usr/local/lsws/lsphp83/etc/php.ini`) : max_execution_time / max_input_time 300,
+  max_file_uploads 50, date.timezone Europe/Brussels, opcache.validate_timestamps On ; le reste était déjà bon
+  (memory_limit 1024M, post_max_size 3G, disable_functions vide). En CLI, PHP force max_execution_time 0 et
+  max_input_time -1 (même via get_cfg_var) : vérifier ces deux-là par `grep` dans le fichier.
+- ✅ Dépôt GitHub **public** : pas de deploy key pour cloner ; une seule clé (GitHub Actions → VPS).
+- ⏳ Clé de déploiement (section 6 de cyberpanel.md) : premier essai fait **en root** par erreur
+  (« /root/app/bin/deploy.sh: No such file or directory ») ; nettoyage de `/root/.ssh/authorized_keys` donné,
+  à refaire en tant qu'utilisateur du site (`su - "$SITEUSER" -s /bin/bash`, vérifier `whoami` / `$HOME`).
+  Vérifier aussi que la section 4 (code dans `/home/sarah.famille-pitz.net/app`) est faite.
+- Reste : secrets GitHub (6.5), sauvegardes (section 7), premier « Run workflow », vérifications (section 8).
+
+À faire ensuite : finir l'installation du VPS (ci-dessus), premier passage du workflow de déploiement sur GitHub
+(premier passage des tests : 2 échecs SMTP, corrigés par MAILER_DSN=null://null — passage au vert non confirmé ;
+déploiement jamais lancé), design adapté
+à Sarah (6 ans).
 
 Suite de tests : 58 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/opus/001` à `016` (prochain **017**) ; journal `documentations-dev/001` à `016` (prochain **017**).
+Traçabilité : `.claude-tasks/opus/001` à `017` (prochain **018**) ; journal `documentations-dev/001` à `017` (prochain **018**).
 
 ## Décisions prises avec l'utilisateur
 
