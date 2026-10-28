@@ -33,6 +33,11 @@
         {% endif %}
 
         <main>
+            {% if app.user %}
+                {% for message in app.flashes('success') %}
+                    <div class="alert alert-success" role="status">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
             {% block body %}{% endblock %}
         </main>
     </body>

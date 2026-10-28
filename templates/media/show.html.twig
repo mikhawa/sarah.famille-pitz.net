@@ -63,5 +63,40 @@
 
             <p><a href="{{ path('media_file', {id: media.id, download: 1}) }}" class="button" data-turbo="false">Télécharger</a></p>
         </div>
+
+        <section class="comments" id="comments" aria-labelledby="comments-title">
+            <h2 id="comments-title">Petits mots{% if comments is not empty %} ({{ comments|length }}){% endif %}</h2>
+
+            {% if comments is empty %}
+                <p class="comments-empty">Pas encore de petit mot. Sois le premier !</p>
+            {% else %}
+                <ol class="comment-list">
+                    {% for comment in comments %}
+                        <li id="comment-{{ comment.id }}" class="comment{% if comment.hidden %} comment-hidden{% endif %}">
+                            <p class="comment-meta">
+                                <strong>{{ comment.author ? comment.author.displayName : 'Ancien membre' }}</strong>
+                                · <time datetime="{{ comment.createdAt|date('c') }}">{{ comment.createdAt|format_datetime('medium', 'short') }}</time>
+                                {% if comment.hidden %}<span class="comment-badge">Masqué par l'administration</span>{% endif %}
+                            </p>
+                            <p class="comment-content">{{ comment.content|nl2br }}</p>
+                            {% if is_granted('COMMENT_DELETE', comment) %}
+                                <form method="post" action="{{ path('comment_delete', {id: comment.id}) }}" class="comment-delete"
+                                      data-turbo-confirm="Supprimer ce commentaire ?">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('delete-comment-' ~ comment.id) }}">
+                                    <button type="submit">Supprimer</button>
+                                </form>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ol>
+            {% endif %}
+
+            {% if is_granted('MEDIA_COMMENT', media) %}
+                {{ form_start(comment_form, {attr: {class: 'comment-form'}}) }}
+                    {{ form_row(comment_form.content) }}
+                    <button type="submit" class="button">Envoyer</button>
+                {{ form_end(comment_form) }}
+            {% endif %}
+        </section>
     </article>
 {% endblock %}

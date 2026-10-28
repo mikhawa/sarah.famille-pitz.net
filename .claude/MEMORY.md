@@ -11,11 +11,11 @@ Plan en 6 étapes (détail : `docs/architecture/overview.md`, section « Plan de
 3. ✅ Médias — envoi groupé privé, nettoyage EXIF/GPS (photos GD, vidéos ffmpeg), miniatures, `MediaFileController` + `MediaVoter`
 4. ✅ Front — fil chronologique par mois (filtre par type), albums + thèmes, pages tag, fiche média (lecteurs,
    précédent/suivant, clavier/glissement), pagination 24/page ; déconnexion des comptes désactivés
-5. ⏭️ **Commentaires (prochaine étape)** — entité `Comment`, ajout par les membres, `CommentVoter`, modération (`is_hidden`) dans l'admin
-6. Prod — `X-Accel-Redirect` pour les fichiers, ffmpeg sur le VPS, sauvegardes BDD + `var/storage/media/`, `.env.local`/secrets
+5. ✅ Commentaires — entité `Comment`, ajout par les membres, `CommentVoter`, modération (`is_hidden`) dans l'admin — « petits mots » sous chaque média, suppression par l'auteur, interrupteur « Masqué » dans `/admin/comment`
+6. ⏭️ **Prod (prochaine étape)** — `X-Accel-Redirect` pour les fichiers, ffmpeg sur le VPS, sauvegardes BDD + `var/storage/media/`, `.env.local`/secrets
 
-Suite de tests : 44 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/opus/001` à `009` (prochain **010**) ; journal `documentations-dev/001` à `009` (prochain **010**).
+Suite de tests : 54 tests verts (`docker compose exec php php bin/phpunit`).
+Traçabilité : `.claude-tasks/opus/001` à `010` (prochain **011**) ; journal `documentations-dev/001` à `010` (prochain **011**).
 
 ## Décisions prises avec l'utilisateur
 
@@ -57,4 +57,6 @@ Les médias envoyés (`var/storage/media/`) et la base ne sont pas dans git : il
 - Symfony Flex : `extra.symfony.docker: false` pour ne pas générer de `compose.yaml` concurrent
 - HEIC refusé (GD ne le lit pas) ; vidéos non transcodées (HEVC pas lisible partout)
 - Un compte désactivé gardait sa session : `UserChecker` ne bloque que la connexion → `DeactivatedUserSubscriber`
+- `#[IsCsrfTokenValid]` : un jeton invalide renvoie vers `/login` (exception d'authentification) ; vérifier le jeton dans l'action pour obtenir un 403
+- `TextareaType` vide → `null` : mettre `empty_data: ''` sur un champ `string` non nullable
 - Fins de ligne : l'IDE Windows convertit en CRLF, le dépôt est en LF
