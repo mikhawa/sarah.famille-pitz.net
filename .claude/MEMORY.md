@@ -18,11 +18,15 @@ Plan en 6 étapes (détail : `docs/architecture/overview.md`, section « Plan de
    = tests (préprod) à chaque push/PR ; déploiement seulement par « Run workflow » (`workflow_dispatch`) sur `main`,
    après les tests → SSH → `bin/deploy.sh <sha>` (clé limitée par `command=` dans authorized_keys)
 
+Le VPS est sous **CyberPanel** (OpenLiteSpeed, lsphp83, un utilisateur Linux par site) : procédure
+`docs/devops/cyberpanel.md` ; `MEDIA_X_ACCEL_PREFIX` vide (pas de X-Accel), `.deploy.env` (PHP_BIN, COMPOSER_BIN),
+secret GitHub `DEPLOY_USER`, racine web `<home>/app/public` (vHost Conf), `public/.htaccess`.
+
 À faire ensuite : installation réelle du VPS + secrets GitHub (section 6 de vps-preprod.md), premier passage du
 workflow sur GitHub (jamais exécuté), design adapté à Sarah (6 ans).
 
 Suite de tests : 58 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/opus/001` à `014` (prochain **015**) ; journal `documentations-dev/001` à `014` (prochain **015**).
+Traçabilité : `.claude-tasks/opus/001` à `015` (prochain **016**) ; journal `documentations-dev/001` à `015` (prochain **016**).
 
 ## Décisions prises avec l'utilisateur
 

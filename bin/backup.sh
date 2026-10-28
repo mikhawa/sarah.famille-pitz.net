@@ -49,7 +49,9 @@ mkdir -p "$BACKUP_DIR/db" "$BACKUP_DIR/media"
 # Écrit d'abord dans un fichier temporaire : une sauvegarde interrompue ne remplace jamais une sauvegarde valide
 db_file="$BACKUP_DIR/db/${BACKUP_DB_NAME}_$STAMP.sql.gz"
 log "Base $BACKUP_DB_NAME → $db_file"
-mariadb-dump --defaults-extra-file="$BACKUP_MYSQL_CNF" \
+# mariadb-dump (MariaDB ≥ 10.5), sinon mysqldump (anciennes versions, certains panneaux comme CyberPanel)
+dump_bin="$(command -v mariadb-dump || command -v mysqldump)"
+"$dump_bin" --defaults-extra-file="$BACKUP_MYSQL_CNF" \
     --single-transaction --routines --triggers --default-character-set=utf8mb4 \
     "$BACKUP_DB_NAME" | gzip -9 > "$db_file.tmp"
 mv "$db_file.tmp" "$db_file"

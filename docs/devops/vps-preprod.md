@@ -1,6 +1,8 @@
 # Mise en production sur le VPS
 
 Le site tourne **sans Docker** sur le VPS : nginx + PHP-FPM 8.3 + MariaDB 11.4, sous un utilisateur dédié `sarah`.
+
+> **VPS sous CyberPanel (OpenLiteSpeed)** : suivre [cyberpanel.md](cyberpanel.md), qui adapte cette procédure.
 Fichiers de configuration prêts à copier : [`docs/devops/prod/`](prod/).
 
 | Fichier                         | Destination sur le VPS                                  |
@@ -129,6 +131,14 @@ Même volée, cette clé ne permet que de redéployer un commit déjà présent 
 sarah ALL=(root) NOPASSWD: /usr/bin/systemctl reload php8.3-fpm
 ```
 
+et dans `/var/www/sarah/.deploy.env` (ignoré par git, lu par `bin/deploy.sh`) :
+
+```bash
+DEPLOY_RELOAD_CMD="sudo -n /usr/bin/systemctl reload php8.3-fpm"
+```
+
+Le pool fourni coupe `opcache.validate_timestamps` : sans ce rechargement, l'ancien code resterait en mémoire.
+
 **3. Accès du VPS au dépôt** : si le dépôt GitHub est privé, cloner en SSH avec une *deploy key* en lecture seule
 (GitHub → Settings → Deploy keys), distincte de la clé ci-dessus.
 
@@ -141,6 +151,7 @@ validation manuelle avant chaque déploiement) :
 | `DEPLOY_KNOWN_HOSTS` | résultat de `ssh-keyscan -p <port> <hôte>`, **vérifié** contre l'empreinte affichée sur le VPS (`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`) |
 | `DEPLOY_HOST`        | nom ou adresse IP du VPS                                                |
 | `DEPLOY_PORT`        | port SSH (facultatif, 22 par défaut)                                    |
+| `DEPLOY_USER`        | utilisateur Linux du site (facultatif, `sarah` par défaut)              |
 
 **5. Premier déploiement** : la section 4 (installation manuelle) doit avoir été faite une fois, et les identifiants
 de sauvegarde (section 7) être en place, car `deploy.sh` commence par une sauvegarde ; ensuite, chaque mise en ligne

@@ -97,8 +97,10 @@ jobs:
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+          # Utilisateur Linux du site (CyberPanel en crée un par site)
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER || 'sarah' }}
         # Côté serveur, cette clé ne peut lancer que bin/deploy.sh, qui reçoit le commit testé
-        run: ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" -o BatchMode=yes "sarah@$DEPLOY_HOST" "$GITHUB_SHA"
+        run: ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" "$GITHUB_SHA"
 
       - name: Nettoyage de la clé
         if: always()
