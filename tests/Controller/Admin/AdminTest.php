@@ -57,6 +57,22 @@ class AdminTest extends WebTestCase
         }
     }
 
+    public function testAdminUsesTheSiteTheme(): void
+    {
+        $this->client->loginUser($this->createUser('papa@example.com', 'Papa', admin: true));
+
+        $crawler = $this->client->request('GET', '/admin');
+        self::assertSelectorTextContains('.ea-sidebar-logo', 'Sarah');
+        // Toujours en clair, comme le site
+        self::assertSame('false', $crawler->filter('body')->attr('data-ea-dark-scheme-is-enabled'));
+
+        $stylesheet = $crawler->filter('link[rel="stylesheet"][href*="/assets/styles/admin-"]');
+        self::assertCount(1, $stylesheet);
+        $this->client->request('GET', $stylesheet->attr('href'));
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('--ea-primary', (string) $this->client->getInternalResponse()->getContent());
+    }
+
     public function testCreatingAMemberSendsAnInvitationThatLetsThemChooseAPassword(): void
     {
         $this->client->loginUser($this->createUser('papa@example.com', 'Papa', admin: true));

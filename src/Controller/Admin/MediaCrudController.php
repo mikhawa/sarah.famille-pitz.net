@@ -25,6 +25,7 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\ChoiceFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGenerator;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -119,6 +120,12 @@ class MediaCrudController extends AbstractCrudController
     {
         $form = $this->createForm(MediaUploadType::class);
         $form->handleRequest($request);
+        $indexUrl = $this->adminUrlGenerator
+            ->setController(self::class)
+            ->setAction(Action::INDEX)
+            ->generateUrl();
+        // Envoi par lots du script assets/admin/media_upload.js : bilan en JSON, affiché par la page elle-même
+        $isBatch = 'json' === $request->getPreferredFormat();
 
         if ($form->isSubmitted() && $form->isValid()) {
             $user = $this->getUser();
@@ -132,8 +139,7 @@ class MediaCrudController extends AbstractCrudController
                 try {
                     $media = $this->uploader->upload($file, $file->getClientOriginalName(), $user instanceof User ? $user : null);
                 } catch (UnsupportedMediaException $e) {
-                    // EasyAdmin affiche les messages flash sans échappement : le nom vient du navigateur
-                    $errors[] = \sprintf('%s : %s', htmlspecialchars($file->getClientOriginalName()), htmlspecialchars($e->getMessage()));
+                    $errors[] = \sprintf('%s : %s', $file->getClientOriginalName(), $e->getMessage());
                     continue;
                 }
 
@@ -148,21 +154,31 @@ class MediaCrudController extends AbstractCrudController
                 ++$saved;
             }
 
+            if ($isBatch) {
+                return $this->json(['saved' => $saved, 'errors' => $errors]);
+            }
+
             if ($saved > 0) {
                 $this->addFlash('success', 1 === $saved ? '1 média ajouté.' : \sprintf('%d médias ajoutés.', $saved));
             }
             foreach ($errors as $error) {
-                $this->addFlash('danger', $error);
+                // EasyAdmin affiche les messages flash sans échappement : le nom du fichier vient du navigateur
+                $this->addFlash('danger', htmlspecialchars($error));
             }
 
-            return $this->redirect($this->adminUrlGenerator
-                ->setController(self::class)
-                ->setAction(Action::INDEX)
-                ->generateUrl());
+            return $this->redirect($indexUrl);
+        }
+
+        if ($isBatch && $form->isSubmitted()) {
+            $errors = array_map(static fn (FormError $error) => $error->getMessage(), iterator_to_array($form->getErrors(true)));
+
+            return $this->json(['saved' => 0, 'errors' => $errors], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         return $this->render('admin/media/upload.html.twig', [
             'form' => $form,
+            // Lien affiché par le script d'envoi par lots une fois tous les lots envoyés
+            'index_url' => $indexUrl,
         ], new Response(null, $form->isSubmitted() ? 422 : 200));
     }
 

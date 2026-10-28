@@ -21,8 +21,8 @@ Plan en 6 étapes (détail : `docs/architecture/overview.md`, section « Plan de
 À faire ensuite : installation réelle du VPS + secrets GitHub (section 6 de vps-preprod.md), premier passage du
 workflow sur GitHub (jamais exécuté), design adapté à Sarah (6 ans).
 
-Suite de tests : 55 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/opus/001` à `011` (prochain **012**) ; journal `documentations-dev/001` à `011` (prochain **012**).
+Suite de tests : 57 tests verts (`docker compose exec php php bin/phpunit`).
+Traçabilité : `.claude-tasks/opus/001` à `013` (prochain **014**) ; journal `documentations-dev/001` à `013` (prochain **014**).
 
 ## Décisions prises avec l'utilisateur
 
@@ -69,4 +69,10 @@ Les médias envoyés (`var/storage/media/`) et la base ne sont pas dans git : il
 - Variables d'environnement du conteneur PHP (`docker-compose.yml`) : prioritaires sur `.env.test` → les neutraliser dans `phpunit.dist.xml` avec `<env … force="true"/>` (`<server>` ne suffit pas : Symfony lit `$_ENV` d'abord)
 - Tests : `MAILER_DSN=null://null` forcé dans `phpunit.dist.xml`, sinon ils envoient à Mailpit (absent sur GitHub → échecs SMTP)
 - CSRF sans état (login, formulaires) : pour tester avec curl, cookie `csrf-token_<jeton>=csrf-token` + champ `<jeton>` (≥ 24 caractères) + en-tête `Origin`
+- Thème EasyAdmin : `assets/styles/admin.css` hors cascade layers → redéfinir les variables (`--ea-primary`…) suffit ; mode sombre désactivé
+- Plus de 50 fichiers par requête → avertissement PHP avant Symfony → « session_id(): … headers already sent » ; en prod,
+  fichiers en trop ignorés sans message. Envoi par lots côté navigateur (`assets/admin/media_upload.js`)
+- L'admin n'a pas Stimulus : point d'entrée AssetMapper `admin` (`assets/admin.js`) qui importe directement
+  `csrf_protection_controller.js`. Sans lui, les formulaires à jeton sans état (`token_id: submit`, ex. envoi de médias)
+  échouent en 422 dès que la session a déjà utilisé le double-submit (« double-submit info … is now missing »)
 - Fins de ligne : l'IDE Windows convertit en CRLF, le dépôt est en LF

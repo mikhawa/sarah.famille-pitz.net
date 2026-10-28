@@ -25,7 +25,7 @@ class MediaUploadType extends AbstractType
             ->add('files', FileType::class, [
                 'label' => 'Fichiers',
                 'multiple' => true,
-                'help' => 'Photos (JPEG, PNG, WebP, GIF), musique (MP3, M4A, OGG, WAV, FLAC), vidéos (MP4, WebM, MOV). 256 Mo maximum par fichier, 50 fichiers par envoi.',
+                'help' => 'Photos (JPEG, PNG, WebP, GIF), musique (MP3, M4A, OGG, WAV, FLAC), vidéos (MP4, WebM, MOV). 256 Mo maximum par fichier, autant de fichiers que vous voulez.',
                 'attr' => ['accept' => 'image/jpeg,image/png,image/webp,image/gif,audio/*,video/mp4,video/webm,video/quicktime'],
                 'constraints' => [
                     new Count(min: 1, minMessage: 'Choisissez au moins un fichier.'),

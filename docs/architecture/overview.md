@@ -61,7 +61,11 @@ Le type est détecté sur le **contenu** du fichier, pas sur son extension.
 
 - HEIC (iPhone) refusé avec un message : GD ne sait pas le lire. Exporter en JPEG (réglage iPhone « Le plus compatible »).
 - Pas de transcodage vidéo : une vidéo HEVC/MOV peut ne pas se lire dans tous les navigateurs.
-- Limites : 256 Mo par fichier, 1 Go et 50 fichiers par envoi (`docker/php/php.ini`, `docker/nginx/default.conf`).
+- Limites PHP : 256 Mo par fichier, 1 Go et 50 fichiers par requête (`docker/php/php.ini`, `docker/nginx/default.conf`).
+  Au-delà, PHP ignore les fichiers en trop (et, avec `display_startup_errors`, casse la page) : le navigateur découpe donc
+  la sélection en lots de 20 fichiers / 500 Mo (`assets/admin/media_upload.js`), envoyés l'un après l'autre avec
+  `Accept: application/json` ; le serveur répond par un bilan JSON (`saved`, `errors`) et la page affiche le bilan total.
+  Sans JavaScript, envoi classique avec messages flash.
 - ffmpeg/ffprobe doivent être installés sur le serveur (présents dans l'image Docker).
 
 ## Couches

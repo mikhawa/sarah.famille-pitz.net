@@ -188,6 +188,40 @@ class MediaTest extends WebTestCase
         }
     }
 
+    public function testBatchUploadReturnsAJsonSummary(): void
+    {
+        // Mode utilisé par assets/admin/media_upload.js : un lot de la sélection, bilan en JSON (sans message flash)
+        $this->client->loginUser($this->createUser('papa@example.com', admin: true));
+        $crawler = $this->client->request('GET', '/admin/media/upload');
+        self::assertSelectorExists('form[name="media_upload"][data-list-url]');
+        $token = $crawler->filter('input[name="media_upload[_token]"]')->attr('value');
+
+        $this->client->request('POST', '/admin/media/upload', ['media_upload' => ['_token' => $token]], [
+            'media_upload' => ['files' => [
+                new UploadedFile($this->fixtures->png(), 'plage.png', test: true),
+                new UploadedFile($this->fixtures->textDisguisedAsJpeg(), '<i>faux.jpg', test: true),
+            ]],
+        ], ['HTTP_ACCEPT' => 'application/json']);
+
+        self::assertResponseIsSuccessful();
+        self::assertResponseHeaderSame('Content-Type', 'application/json');
+        $summary = json_decode((string) $this->client->getResponse()->getContent(), true);
+        self::assertSame(1, $summary['saved']);
+        // Texte brut : la page l'insère avec textContent
+        self::assertCount(1, $summary['errors']);
+        self::assertStringStartsWith('<i>faux.jpg : Type de fichier non pris en charge', $summary['errors'][0]);
+        self::assertSame(1, $this->entityManager->getRepository(Media::class)->count());
+
+        // Les messages du lot ne restent pas en attente pour la page suivante
+        $this->client->request('GET', '/admin/media');
+        self::assertSelectorNotExists('.alert-success');
+
+        // Lot invalide : erreurs du formulaire en JSON
+        $this->client->request('POST', '/admin/media/upload', ['media_upload' => ['_token' => $token]], [], ['HTTP_ACCEPT' => 'application/json']);
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(['Choisissez au moins un fichier.'], json_decode((string) $this->client->getResponse()->getContent(), true)['errors']);
+    }
+
     public function testUploadWithoutFileIsRejected(): void
     {
         $this->client->loginUser($this->createUser('papa@example.com', admin: true));

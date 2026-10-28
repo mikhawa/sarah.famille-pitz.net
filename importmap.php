@@ -16,6 +16,11 @@ return [
         'path' => './assets/app.js',
         'entrypoint' => true,
     ],
+    // Administration EasyAdmin : thème et envoi des médias par lots
+    'admin' => [
+        'path' => './assets/admin.js',
+        'entrypoint' => true,
+    ],
     '@hotwired/stimulus' => [
         'version' => '3.2.2',
     ],
