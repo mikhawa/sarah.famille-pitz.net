@@ -556,3 +556,21 @@ h2 {
     padding-left: 1.2rem;
     color: #9b1c1c;
 }
+
+/* --- Visionneuse des photos (PhotoSwipe) --- */
+
+.pswp {
+    --pswp-bg: #2d2a32;
+}
+
+.pswp__button--media-page {
+    display: grid;
+    place-items: center;
+    width: 50px;
+    text-decoration: none;
+}
+
+.pswp-media-page {
+    font-size: 1.4rem;
+    line-height: 1;
+}

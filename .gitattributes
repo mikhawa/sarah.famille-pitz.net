@@ -1,0 +1,22 @@
+# Fins de ligne : LF partout, y compris sur un poste Windows (le serveur et les conteneurs sont sous Linux).
+# Un fichier enregistré en CRLF par l'IDE est remis en LF par git à chaque commit.
+* text=auto eol=lf
+
+# Scripts lancés sous Linux : un CRLF les casse (« bad interpreter »)
+*.sh text eol=lf
+bin/* text eol=lf
+
+# Fichiers binaires : jamais convertis
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.mp3 binary
+*.mp4 binary
+*.webm binary
+*.mov binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

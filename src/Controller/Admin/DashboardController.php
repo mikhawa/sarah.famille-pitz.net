@@ -9,6 +9,7 @@ use App\Entity\Tag;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminDashboard;
+use EasyCorp\Bundle\EasyAdminBundle\Config\Assets;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Dashboard;
 use EasyCorp\Bundle\EasyAdminBundle\Config\MenuItem;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractDashboardController;
@@ -40,8 +41,17 @@ class DashboardController extends AbstractDashboardController
     public function configureDashboard(): Dashboard
     {
         return Dashboard::new()
-            ->setTitle('Site de Sarah — Administration')
-            ->setLocales(['fr']);
+            ->setTitle('🌈 Sarah')
+            ->setFaviconPath('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>🌈</text></svg>')
+            ->setLocales(['fr'])
+            // Toujours en clair, comme le site
+            ->disableDarkMode();
+    }
+
+    public function configureAssets(): Assets
+    {
+        // Thème accordé au site et envoi des médias par lots (point d'entrée AssetMapper « admin »)
+        return Assets::new()->addAssetMapperEntry('admin');
     }
 
     public function configureMenuItems(): iterable

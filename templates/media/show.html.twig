@@ -22,9 +22,10 @@
             {% endif %}
         </nav>
 
-        <figure class="player player-{{ media.type.value }}">
+        <figure class="player player-{{ media.type.value }}"{% if media.type.value == 'photo' %} data-controller="lightbox"{% endif %}>
             {% if media.type.value == 'photo' %}
-                <a href="{{ path('media_file', {id: media.id}) }}" data-turbo="false" title="Voir en grand">
+                {# Visionneuse plein écran ; sans JavaScript, le lien ouvre l'original #}
+                <a href="{{ path('media_file', {id: media.id}) }}" data-turbo="false" title="Voir en grand" data-lightbox-current{{ include('media/_lightbox_attributes.html.twig') }}>
                     <img src="{{ path('media_thumb', {id: media.id, size: 'large'}) }}" alt="{{ media.displayTitle }}"
                          {% if media.width and media.height %}width="{{ media.width }}" height="{{ media.height }}"{% endif %}>
                 </a>

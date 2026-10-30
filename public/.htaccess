@@ -1,0 +1,14 @@
+# Réécriture des URL vers Symfony pour OpenLiteSpeed / LiteSpeed (CyberPanel).
+# Sans effet en développement : le Docker utilise nginx (docker/nginx/default.conf).
+DirectoryIndex index.php
+
+RewriteEngine On
+
+# Production : tout en HTTPS (limité au domaine du site, pour ne rien changer ailleurs)
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP_HOST} ^sarah\.famille-pitz\.net$ [NC]
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
+# Fichiers réels de public/ (assets compilés, robots.txt) servis directement, tout le reste passe par Symfony
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [QSA,L]

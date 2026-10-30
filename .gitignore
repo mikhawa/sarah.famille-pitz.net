@@ -3,6 +3,8 @@
 ###> symfony/framework-bundle ###
 /.env.local
 /.env.local.php
+# Réglages du serveur pour bin/deploy.sh
+/.deploy.env
 /.env.*.local
 /config/secrets/prod/prod.decrypt.private.php
 /public/bundles/

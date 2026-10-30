@@ -8,9 +8,10 @@
     <p class="text-muted">
         Les photos sont débarrassées de leurs informations cachées (position GPS, appareil…) et les vidéos de leurs
         métadonnées avant d'être enregistrées. L'envoi de grosses vidéos peut prendre quelques minutes.
+        Vous pouvez choisir autant de fichiers que vous voulez : ils sont envoyés par petits lots, l'un après l'autre.
     </p>
 
-    {{ form_start(form) }}
+    {{ form_start(form, {attr: {'data-list-url': index_url}}) }}
         {{ form_row(form.files) }}
         {{ form_row(form.album) }}
         {{ form_row(form.tags) }}

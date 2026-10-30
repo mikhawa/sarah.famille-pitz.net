@@ -1,0 +1,114 @@
+/*
+ * Thème de l'administration EasyAdmin, accordé au site (assets/styles/app.css) : blanc, rose, coins arrondis.
+ *
+ * EasyAdmin 5 range ses styles dans des cascade layers (@layer ea…) : ces règles, hors de toute couche,
+ * passent avant elles sans !important. On ne touche qu'à ses variables, sauf pour quelques détails.
+ * Mode sombre désactivé dans DashboardController : l'administration reste toujours claire.
+ */
+
+:root {
+    /* Couleurs du site */
+    --sarah-accent: #e85d75;
+    --sarah-accent-dark: #c43d57;
+    --sarah-accent-soft: #ffe3e8;
+    --sarah-cream: #fff8f0;
+    --sarah-border: #f0e2d6;
+    --sarah-text: #2d2a32;
+    --sarah-muted: #6b6475;
+    --sarah-shadow: 0 2px 10px rgb(45 42 50 / 8%);
+
+    /* Réglages globaux d'EasyAdmin : toutes les nuances de la couleur principale en découlent */
+    --ea-primary: var(--sarah-accent);
+    --ea-radius: 0.6rem;
+
+    --font-family-sans-serif: ui-rounded, "SF Pro Rounded", "Nunito", "Segoe UI", system-ui, sans-serif;
+    --text-color: var(--sarah-text);
+    --text-muted: var(--sarah-muted);
+    --link-color: var(--sarah-accent-dark);
+    --link-hover-color: var(--sarah-accent);
+
+    /* Fond crème autour, contenu blanc */
+    --body-bg: var(--sarah-cream);
+    --content-bg: var(--sarah-cream);
+    --border-color: var(--sarah-border);
+    --table-cell-border-color: var(--sarah-border);
+    --table-hover-cell-bg: #fffaf5;
+
+    /* Barre latérale blanche, élément actif en pastille rose pâle */
+    --sidebar-bg: #fff;
+    --sidebar-border-color: var(--sarah-border);
+    --sidebar-menu-color: var(--sarah-text);
+    --sidebar-menu-icon-color: var(--sarah-accent);
+    --sidebar-menu-header-color: var(--sarah-muted);
+    --sidebar-menu-hover-color: var(--sarah-accent-dark);
+    --sidebar-item-hover-bg: var(--sarah-accent-soft);
+    --sidebar-menu-active-item-bg: var(--sarah-accent-soft);
+    --sidebar-menu-active-item-color: var(--sarah-accent-dark);
+    --sidebar-logo-color: var(--sarah-accent);
+
+    /* Boutons principaux pleins, comme sur le site */
+    --button-primary-bg: var(--sarah-accent);
+    --button-primary-hover-bg: var(--sarah-accent-dark);
+    --button-primary-active-bg: var(--sarah-accent-dark);
+    --button-primary-border-color: transparent;
+    --button-primary-hover-border-color: transparent;
+    --button-border-radius: 999px;
+
+    /* Formulaires et interrupteurs */
+    --form-input-border-color: var(--sarah-border);
+    --form-input-hover-border-color: #e9c9b5;
+    --switch-checked-bg: var(--sarah-accent);
+    --pagination-active-bg: var(--sarah-accent);
+    --pagination-active-color: #fff;
+}
+
+/* Nom du site en grand dans la barre latérale */
+.ea-sidebar-logo .logo-custom {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--sarah-accent);
+}
+
+/* Tableaux, fiches et formulaires posés sur des cartes blanches arrondies
+   (.form-fieldset-body : bloc des champs des pages création, modification et détail) */
+.datagrid,
+.content-body .form-fieldset-body,
+.dashboard-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: var(--sarah-shadow);
+}
+
+.content-body .form-fieldset-body {
+    padding: 1rem 1.25rem;
+}
+
+.datagrid {
+    overflow: hidden;
+}
+
+.datagrid thead th {
+    background: var(--sarah-accent-soft);
+    color: var(--sarah-accent-dark);
+}
+
+/* Titres de page */
+.content-header-title .title {
+    font-weight: 800;
+}
+
+/* Tableau de bord : compteurs */
+.dashboard-card {
+    border: 0;
+}
+
+.dashboard-card .card-title {
+    color: var(--sarah-muted);
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.dashboard-card .display-6 {
+    color: var(--sarah-accent);
+    font-weight: 800;
+}

@@ -1,0 +1,10 @@
+{#- Attributs PhotoSwipe d'un lien vers une photo : image affichée et ses dimensions (rien si elles sont inconnues).
+    GIF : l'original, pour garder l'animation (la miniature WebP est fixe). -#}
+{%- if media.mimeType == 'image/gif' -%}
+    {%- set lightbox_size = media.width and media.height ? {width: media.width, height: media.height} : null -%}
+    {%- set lightbox_src = path('media_file', {id: media.id}) -%}
+{%- else -%}
+    {%- set lightbox_size = thumb_size(media, 'large') -%}
+    {%- set lightbox_src = path('media_thumb', {id: media.id, size: 'large'}) -%}
+{%- endif -%}
+{%- if lightbox_size %} data-pswp-src="{{ lightbox_src }}" data-pswp-width="{{ lightbox_size.width }}" data-pswp-height="{{ lightbox_size.height }}"{% endif -%}

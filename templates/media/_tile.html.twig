@@ -1,5 +1,6 @@
+{# Photo : ouverte dans la visionneuse (lightbox_controller.js) ; le lien vers la fiche reste suivi sans JavaScript #}
 <li>
-    <a href="{{ path('media_show', {id: media.id}) }}" class="tile tile-{{ media.type.value }}" title="{{ media.displayTitle }}">
+    <a href="{{ path('media_show', {id: media.id}) }}" class="tile tile-{{ media.type.value }}" title="{{ media.displayTitle }}"{% if media.type.value == 'photo' %}{{ include('media/_lightbox_attributes.html.twig') }}{% endif %}>
         {% if media.type.hasThumbnail %}
             <img src="{{ path('media_thumb', {id: media.id, size: 'small'}) }}" alt="{{ media.displayTitle }}" loading="lazy">
         {% else %}

@@ -23,8 +23,8 @@ export default class extends Controller {
     }
 
     onKeydown(event) {
-        // Les flèches servent déjà à avancer dans une vidéo ou à saisir du texte
-        if (this.isInteractive(event.target) || event.altKey || event.ctrlKey || event.metaKey) {
+        // Les flèches servent déjà à avancer dans une vidéo, à saisir du texte ou à changer de photo dans la visionneuse
+        if (this.isInteractive(event.target) || this.lightboxIsOpen() || event.altKey || event.ctrlKey || event.metaKey) {
             return;
         }
         if (event.key === 'ArrowLeft') {
@@ -57,6 +57,10 @@ export default class extends Controller {
         if (hasTarget) {
             this[`${direction}Target`].click();
         }
+    }
+
+    lightboxIsOpen() {
+        return document.querySelector('.pswp') !== null;
     }
 
     isInteractive(element) {

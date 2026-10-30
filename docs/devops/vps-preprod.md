@@ -1,41 +1,100 @@
-# Mise en production sur le VPS
+# Mise en production sur le VPS (AlmaLinux 9)
 
-Le site tourne **sans Docker** sur le VPS : nginx + PHP-FPM 8.3 + MariaDB 11.4, sous un utilisateur dédié `sarah`.
+Le site tourne **sans Docker** sur un VPS **AlmaLinux 9** : nginx + PHP-FPM 8.3 + MariaDB 11.4, sous un utilisateur
+dédié `sarah`. Toutes les commandes `sudo` se lancent depuis un compte administrateur (ou en root, sans `sudo`).
+
+> **VPS sous CyberPanel (OpenLiteSpeed)** : suivre [cyberpanel.md](cyberpanel.md), qui adapte cette procédure.
+
 Fichiers de configuration prêts à copier : [`docs/devops/prod/`](prod/).
 
 | Fichier                         | Destination sur le VPS                                  |
 |---------------------------------|---------------------------------------------------------|
-| `prod/nginx-sarah.conf`         | `/etc/nginx/sites-available/sarah.famille-pitz.net`     |
-| `prod/php-fpm-sarah.conf`       | `/etc/php/8.3/fpm/pool.d/sarah.conf`                    |
+| `prod/nginx-sarah.conf`         | `/etc/nginx/conf.d/sarah.famille-pitz.net.conf`         |
+| `prod/php-fpm-sarah.conf`       | `/etc/php-fpm.d/sarah.conf`                             |
 | `prod/env.local.example`        | `/var/www/sarah/.env.local` (à compléter, `chmod 600`)  |
 
 ## 1. Paquets
 
-Ubuntu 24.04 LTS fournit PHP 8.3 ; MariaDB 11.4 vient du dépôt officiel MariaDB
-(Ubuntu n'a que la 10.11 : https://mariadb.org/download/?t=repo-config).
+AlmaLinux 9 ne fournit ni PHP 8.3 ni MariaDB 11.4 ni ffmpeg dans ses dépôts de base : on ajoute **EPEL**, **Remi**
+(PHP 8.3), **RPM Fusion** (ffmpeg) et le dépôt officiel **MariaDB**.
 
 ```bash
-sudo apt install nginx git unzip rsync ffmpeg certbot python3-certbot-nginx \
-    php8.3-fpm php8.3-cli php8.3-mysql php8.3-intl php8.3-zip php8.3-gd php8.3-mbstring php8.3-xml php8.3-curl
-# php8.3-exif et opcache sont inclus dans php8.3-common sur Ubuntu
-sudo apt install mariadb-server   # après avoir ajouté le dépôt MariaDB 11.4
-# Composer : https://getcomposer.org/download/ (installé dans /usr/local/bin/composer)
+# EPEL et CRB (dépendances d'EPEL et de RPM Fusion)
+sudo dnf install -y epel-release
+sudo dnf config-manager --set-enabled crb
+
+# PHP 8.3 (dépôt Remi, en remplacement du module PHP d'AlmaLinux)
+sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm
+sudo dnf module reset -y php
+sudo dnf module enable -y php:remi-8.3
+sudo dnf install -y php-fpm php-cli php-mysqlnd php-intl php-zip php-gd php-mbstring php-xml php-opcache composer
+
+# ffmpeg (RPM Fusion « free »)
+sudo dnf install -y https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm
+sudo dnf install -y ffmpeg
+
+# MariaDB 11.4 (dépôt officiel : https://mariadb.org/download/?t=repo-config)
+curl -LsS https://r.mariadb.com/downloads/mariadb_repo_setup | sudo bash -s -- --mariadb-server-version=11.4
+sudo dnf install -y MariaDB-server MariaDB-client
+
+# Serveur web, certificats, outils
+sudo dnf install -y nginx certbot python3-certbot-nginx git unzip rsync policycoreutils-python-utils
+
+sudo systemctl enable --now mariadb php-fpm nginx
+```
+
+Vérifications :
+
+```bash
+php -v                                         # PHP 8.3.x
+php -m | grep -iE 'pdo_mysql|intl|zip|gd|exif|mbstring|opcache'
+php -r 'print_r(array_intersect_key(gd_info(), ["WebP Support" => 1, "JPEG Support" => 1]));'   # 1 et 1
+ffmpeg -version | head -1
+mariadb --version                              # 11.4.x, pour serverVersion dans DATABASE_URL
+nginx -v                                       # 1.20 ou plus
 ```
 
 **ffmpeg est obligatoire** : sans lui, les vidéos sont refusées (métadonnées GPS non supprimables).
 
-## 2. Utilisateur et dossiers
+## 2. Utilisateur, dossiers et pare-feu
 
 ```bash
-sudo adduser --disabled-password --gecos "" sarah
-sudo usermod -aG sarah www-data            # nginx doit lire public/ et var/storage/media/
+sudo useradd --create-home --shell /bin/bash sarah
+sudo usermod -aG sarah nginx               # nginx doit lire public/ et var/storage/media/
 sudo mkdir -p /var/www/sarah /var/backups/sarah
 sudo chown sarah:sarah /var/www/sarah /var/backups/sarah
 sudo chmod 750 /var/www/sarah              # aucun accès pour les autres utilisateurs du serveur
 sudo chmod 700 /var/backups/sarah
+
+# Pare-feu (firewalld) : HTTP et HTTPS ; SSH est ouvert par défaut
+sudo firewall-cmd --permanent --add-service=http --add-service=https
+sudo firewall-cmd --reload
 ```
 
+### SELinux
+
+AlmaLinux 9 active SELinux (`getenforce` → `Enforcing`). Il faut indiquer que nginx et PHP-FPM peuvent lire le site,
+écrire dans `var/` et joindre la base et le serveur SMTP. **Ne pas désactiver SELinux.**
+
+```bash
+sudo semanage fcontext -a -t httpd_sys_content_t    "/var/www/sarah(/.*)?"
+sudo semanage fcontext -a -t httpd_sys_rw_content_t "/var/www/sarah/var(/.*)?"
+sudo restorecon -Rv /var/www/sarah
+
+sudo setsebool -P httpd_can_network_connect_db 1   # MariaDB par 127.0.0.1
+sudo setsebool -P httpd_can_network_connect 1      # serveur SMTP (invitations, mots de passe oubliés)
+```
+
+`restorecon` est à relancer si des fichiers sont créés ailleurs puis déplacés dans `/var/www/sarah`.
+En cas de refus inexpliqué (page 500, envoi de vidéo qui échoue, e-mail qui ne part pas) :
+`sudo ausearch -m avc -ts recent` montre ce que SELinux a bloqué.
+
 ## 3. Base de données
+
+```bash
+sudo mariadb-secure-installation   # répondre oui partout (pas d'utilisateur anonyme, pas de base test)
+sudo mariadb                       # root se connecte par le compte système, sans mot de passe
+```
 
 ```sql
 CREATE DATABASE sarah_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -55,6 +114,7 @@ En tant que `sarah` (`sudo -iu sarah`) :
 ```bash
 git clone https://github.com/mikhawa/sarah.famille-pitz.net.git /var/www/sarah
 cd /var/www/sarah
+mkdir -p var/sessions                       # sessions PHP (voir prod/php-fpm-sarah.conf)
 cp docs/devops/prod/env.local.example .env.local && chmod 600 .env.local
 nano .env.local                             # APP_SECRET, DATABASE_URL, MAILER_DSN…
 
@@ -70,19 +130,31 @@ php bin/console app:create-admin <email> "<Nom>"
 ## 5. nginx, HTTPS et PHP-FPM
 
 ```bash
-sudo cp docs/devops/prod/php-fpm-sarah.conf /etc/php/8.3/fpm/pool.d/sarah.conf
-sudo rm /etc/php/8.3/fpm/pool.d/www.conf    # pool par défaut inutile
-sudo systemctl restart php8.3-fpm
+# PHP-FPM : pool dédié sous l'utilisateur sarah (le pool www d'origine tourne sous apache)
+sudo cp /var/www/sarah/docs/devops/prod/php-fpm-sarah.conf /etc/php-fpm.d/sarah.conf
+sudo mv /etc/php-fpm.d/www.conf /etc/php-fpm.d/www.conf.disabled
+sudo systemctl restart php-fpm
 
+# Certificat : nginx sert d'abord le seul défi Let's Encrypt en HTTP
 sudo mkdir -p /var/www/letsencrypt
-sudo certbot certonly --webroot -w /var/www/letsencrypt -d sarah.famille-pitz.net
-#   (la première fois, nginx doit déjà servir /.well-known/ : activer d'abord le seul bloc « listen 80 »)
-sudo cp docs/devops/prod/nginx-sarah.conf /etc/nginx/sites-available/sarah.famille-pitz.net
-sudo ln -s /etc/nginx/sites-available/sarah.famille-pitz.net /etc/nginx/sites-enabled/
+sudo tee /etc/nginx/conf.d/sarah.famille-pitz.net.conf >/dev/null <<'EOF'
+server {
+    listen 80;
+    server_name sarah.famille-pitz.net;
+    location /.well-known/acme-challenge/ { root /var/www/letsencrypt; }
+}
+EOF
 sudo nginx -t && sudo systemctl reload nginx
+sudo certbot certonly --webroot -w /var/www/letsencrypt -d sarah.famille-pitz.net
+
+# Puis la configuration complète
+sudo cp /var/www/sarah/docs/devops/prod/nginx-sarah.conf /etc/nginx/conf.d/sarah.famille-pitz.net.conf
+sudo nginx -t && sudo systemctl reload nginx
+sudo systemctl enable --now certbot-renew.timer     # renouvellement automatique du certificat
 ```
 
-Le renouvellement du certificat est automatique (timer `certbot.timer`).
+`nginx-sarah.conf` inclut `/etc/letsencrypt/options-ssl-nginx.conf`, fourni par `python3-certbot-nginx`.
+S'il manque : `sudo certbot install --nginx` le crée, ou retirer la ligne `include` (nginx garde ses réglages TLS par défaut).
 
 ### Envoi des fichiers par nginx (`X-Accel-Redirect`)
 
@@ -126,8 +198,16 @@ Même volée, cette clé ne permet que de redéployer un commit déjà présent 
 **2. Rechargement de PHP-FPM sans mot de passe**, pour cette seule commande (`sudo visudo -f /etc/sudoers.d/sarah-deploy`) :
 
 ```
-sarah ALL=(root) NOPASSWD: /usr/bin/systemctl reload php8.3-fpm
+sarah ALL=(root) NOPASSWD: /usr/bin/systemctl reload php-fpm
 ```
+
+et dans `/var/www/sarah/.deploy.env` (ignoré par git, lu par `bin/deploy.sh`) :
+
+```bash
+DEPLOY_RELOAD_CMD="sudo -n /usr/bin/systemctl reload php-fpm"
+```
+
+Le pool fourni coupe `opcache.validate_timestamps` : sans ce rechargement, l'ancien code resterait en mémoire.
 
 **3. Accès du VPS au dépôt** : si le dépôt GitHub est privé, cloner en SSH avec une *deploy key* en lecture seule
 (GitHub → Settings → Deploy keys), distincte de la clé ci-dessus.
@@ -141,6 +221,7 @@ validation manuelle avant chaque déploiement) :
 | `DEPLOY_KNOWN_HOSTS` | résultat de `ssh-keyscan -p <port> <hôte>`, **vérifié** contre l'empreinte affichée sur le VPS (`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`) |
 | `DEPLOY_HOST`        | nom ou adresse IP du VPS                                                |
 | `DEPLOY_PORT`        | port SSH (facultatif, 22 par défaut)                                    |
+| `DEPLOY_USER`        | utilisateur Linux du site (facultatif, `sarah` par défaut)              |
 
 **5. Premier déploiement** : la section 4 (installation manuelle) doit avoir été faite une fois, et les identifiants
 de sauvegarde (section 7) être en place, car `deploy.sh` commence par une sauvegarde ; ensuite, chaque mise en ligne
