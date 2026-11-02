@@ -33,10 +33,10 @@ secret GitHub `DEPLOY_USER`, racine web `<home>/app/public` (vHost Conf), `publi
 - ⏳ Clé de déploiement (section 6 de cyberpanel.md) : premier essai fait **en root** par erreur
   (« /root/app/bin/deploy.sh: No such file or directory ») ; nettoyage de `/root/.ssh/authorized_keys` donné,
   à refaire en tant qu'utilisateur du site (`su - "$SITEUSER" -s /bin/bash`, vérifier `whoami` / `$HOME`).
-  Vérifier aussi que la section 4 (code dans `/home/sarah.famille-pitz.net/app`) est faite.
+  Chemin du script : voir ci-dessous (cyberpanel.md corrigé le 2026-11-02, section 6.1).
 - ✅ Site en ligne, admin comprise (2026-11-02). **Chemin réel** : `/home/famille-pitz.net/sarah.famille-pitz.net/sarah.famille-pitz.net`
   (sous-domaine de famille-pitz.net → utilisateur Linux du domaine parent), pas `/home/sarah.famille-pitz.net/app`
-  comme le suppose `cyberpanel.md` (doc à corriger). `/admin` était en 500 (« mkdir … var/cache/prod/asset_mapper :
+  (`cyberpanel.md` corrigé). `/admin` était en 500 (« mkdir … var/cache/prod/asset_mapper :
   Permission denied ») : `var/` créé par root → `chown -R` vers le propriétaire du projet + `cache:clear` en tant que lui.
   Toujours lancer console / composer / deploy.sh en tant qu'utilisateur du site, jamais en root.
 - Reste : secrets GitHub (6.5), sauvegardes (section 7), premier « Run workflow », vérifications (section 8).
@@ -47,7 +47,7 @@ déploiement jamais lancé), design adapté
 à Sarah (6 ans).
 
 Suite de tests : 58 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/opus/001` à `017` (prochain **018**) ; journal `documentations-dev/001` à `017` (prochain **018**).
+Traçabilité : `.claude-tasks/opus/001` à `018` (prochain **019**) ; journal `documentations-dev/001` à `018` (prochain **019**).
 
 ## Décisions prises avec l'utilisateur
 
