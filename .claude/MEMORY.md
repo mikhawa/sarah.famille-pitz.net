@@ -34,6 +34,11 @@ secret GitHub `DEPLOY_USER`, racine web `<home>/app/public` (vHost Conf), `publi
   (« /root/app/bin/deploy.sh: No such file or directory ») ; nettoyage de `/root/.ssh/authorized_keys` donné,
   à refaire en tant qu'utilisateur du site (`su - "$SITEUSER" -s /bin/bash`, vérifier `whoami` / `$HOME`).
   Vérifier aussi que la section 4 (code dans `/home/sarah.famille-pitz.net/app`) est faite.
+- ✅ Site en ligne, admin comprise (2026-11-02). **Chemin réel** : `/home/famille-pitz.net/sarah.famille-pitz.net/sarah.famille-pitz.net`
+  (sous-domaine de famille-pitz.net → utilisateur Linux du domaine parent), pas `/home/sarah.famille-pitz.net/app`
+  comme le suppose `cyberpanel.md` (doc à corriger). `/admin` était en 500 (« mkdir … var/cache/prod/asset_mapper :
+  Permission denied ») : `var/` créé par root → `chown -R` vers le propriétaire du projet + `cache:clear` en tant que lui.
+  Toujours lancer console / composer / deploy.sh en tant qu'utilisateur du site, jamais en root.
 - Reste : secrets GitHub (6.5), sauvegardes (section 7), premier « Run workflow », vérifications (section 8).
 
 À faire ensuite : finir l'installation du VPS (ci-dessus), premier passage du workflow de déploiement sur GitHub
