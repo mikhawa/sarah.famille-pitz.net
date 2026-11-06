@@ -23,6 +23,13 @@ Le VPS est sous **AlmaLinux 9** + **CyberPanel** (OpenLiteSpeed, lsphp83, un uti
 `docs/devops/cyberpanel.md` ; `MEDIA_X_ACCEL_PREFIX` vide (pas de X-Accel), `.deploy.env` (PHP_BIN, COMPOSER_BIN),
 secret GitHub `DEPLOY_USER`, racine web `<home>/app/public` (vHost Conf), `public/.htaccess`.
 
+### Miniatures en prod (2026-11-06, branche `fix/02-miniatures-prod`)
+
+- `imagescale(…, IMG_BICUBIC)` renvoie false avec la libgd de lsphp83 → miniatures réduites jamais créées (404).
+  Remplacé par `imagecopyresampled` ; un échec de miniature refuse désormais l'envoi.
+- Réparation des médias existants : `php bin/console app:media:regenerate-thumbs` (`--all` pour tout refaire).
+- ffmpeg semble absent du VPS (`command -v ffmpeg` vide) → vidéos refusées à l'envoi : à installer.
+
 ### Installation du VPS (en cours, suivie avec l'utilisateur, procédure `docs/devops/cyberpanel.md`)
 
 - ✅ `php.ini` de lsphp83 (`/usr/local/lsws/lsphp83/etc/php.ini`) : max_execution_time / max_input_time 300,
