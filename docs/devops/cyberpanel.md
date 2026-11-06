@@ -312,5 +312,6 @@ visionneuse, vérifier qu'une invitation par e-mail arrive.
 | 404 sur toutes les pages sauf l'accueil   | `.htaccess` non lu : bloc `rewrite` du vHost (étape 5)                         |
 | CSS / JS en 403                           | droits de lecture de `<app>/public/` pour OpenLiteSpeed (étape 5)              |
 | Vidéos refusées à l'envoi                 | ffmpeg absent ou `proc_open` désactivé (étape 2)                               |
+| Miniatures absentes (404 sur `/media/<id>/thumb/…`) | `php bin/console app:media:regenerate-thumbs` (recrée les miniatures manquantes depuis les originaux) |
 | Le déploiement GitHub échoue en SSH       | `DEPLOY_USER`, `DEPLOY_PORT`, pare-feu, `authorized_keys`, shell du site (étape 3) |
 | « Composer detected issues in your platform » | `PHP_BIN` / `COMPOSER_BIN` de `.deploy.env` pointent vers un autre PHP     |

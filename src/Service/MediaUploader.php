@@ -185,20 +185,97 @@ class MediaUploader
         $this->filesystem->copy($source, $this->storage->getOriginalPath($media), true);
     }
 
+    /**
+     * Recrée les miniatures d'un média déjà stocké, à partir de son original (commande app:media:regenerate-thumbs)
+     *
+     * @return bool false si ce type de média n'a pas de miniature (musique)
+     *
+     * @throws UnsupportedMediaException original illisible ou miniature impossible à écrire
+     * @throws ProcessException          échec de ffmpeg (vidéo)
+     */
+    public function regenerateThumbnails(Media $media): bool
+    {
+        $original = $this->storage->getOriginalPath($media);
+        if (!is_file($original)) {
+            throw new UnsupportedMediaException(\sprintf('Original introuvable : %s', $original));
+        }
+
+        if (MediaType::Video === $media->getType()) {
+            $frame = $this->filesystem->tempnam(sys_get_temp_dir(), 'frame_', '.jpg');
+            try {
+                $this->ffmpeg->extractFrame($original, $frame, $media->getDuration());
+                $image = @imagecreatefromjpeg($frame);
+            } finally {
+                $this->filesystem->remove($frame);
+            }
+        } elseif (MediaType::Photo === $media->getType()) {
+            // Original déjà réencodé et redressé à l'envoi : aucune orientation à appliquer
+            $image = match ($media->getMimeType()) {
+                'image/jpeg' => @imagecreatefromjpeg($original),
+                'image/png' => @imagecreatefrompng($original),
+                'image/webp' => @imagecreatefromwebp($original),
+                'image/gif' => @imagecreatefromgif($original),
+                default => false,
+            };
+        } else {
+            return false;
+        }
+
+        if (false === $image) {
+            throw new UnsupportedMediaException(\sprintf('Image illisible : %s', $original));
+        }
+
+        $this->writeThumbnails($image, $media);
+
+        return true;
+    }
+
+    /**
+     * @throws UnsupportedMediaException miniature impossible à créer : l'envoi est refusé plutôt que d'enregistrer
+     *                                   un média sans aperçu (404 sur les galeries)
+     */
     private function writeThumbnails(\GdImage $image, Media $media): void
     {
         $width = imagesx($image);
 
         foreach (MediaStorage::THUMB_SIZES as $size => $maxWidth) {
-            $thumb = $width > $maxWidth ? imagescale($image, $maxWidth, -1, \IMG_BICUBIC) : $image;
-            if (false === $thumb) {
-                continue;
-            }
+            $thumb = $width > $maxWidth ? $this->resizeToWidth($image, $maxWidth) : $image;
 
             $path = $this->storage->getThumbnailPath($media, $size);
             $this->storage->ensureDirectoryFor($path);
-            $this->saveWithAlpha($thumb, static fn ($img) => imagewebp($img, $path, self::THUMB_QUALITY));
+            if (!$this->saveWithAlpha($thumb, static fn ($img) => imagewebp($img, $path, self::THUMB_QUALITY))) {
+                throw new UnsupportedMediaException(\sprintf('Impossible d\'enregistrer la miniature « %s ».', $size));
+            }
         }
+    }
+
+    /**
+     * Réduction en largeur, proportions conservées (même calcul que AppExtension::thumbSize).
+     *
+     * imagecopyresampled plutôt qu'imagescale : avec la libgd système (lsphp de LiteSpeed en prod),
+     * imagescale(…, IMG_BICUBIC) renvoie false et aucune miniature réduite n'était créée.
+     */
+    private function resizeToWidth(\GdImage $image, int $width): \GdImage
+    {
+        $sourceWidth = imagesx($image);
+        $sourceHeight = imagesy($image);
+        $height = max(1, (int) round($sourceHeight * $width / $sourceWidth));
+
+        $resized = imagecreatetruecolor($width, $height);
+        if (false === $resized) {
+            throw new UnsupportedMediaException('Mémoire insuffisante pour créer la miniature.');
+        }
+
+        // Fond transparent conservé (PNG, WebP, GIF)
+        imagealphablending($resized, false);
+        imagesavealpha($resized, true);
+        imagefill($resized, 0, 0, (int) imagecolorallocatealpha($resized, 0, 0, 0, 127));
+
+        if (!imagecopyresampled($resized, $image, 0, 0, 0, 0, $width, $height, $sourceWidth, $sourceHeight)) {
+            throw new UnsupportedMediaException('Impossible de réduire l\'image.');
+        }
+
+        return $resized;
     }
 
     /**

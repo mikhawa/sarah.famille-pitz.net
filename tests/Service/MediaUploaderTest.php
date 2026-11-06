@@ -71,8 +71,24 @@ class MediaUploaderTest extends KernelTestCase
 
         self::assertSame([800, 600], [$media->getWidth(), $media->getHeight()]);
         self::assertSame(400, getimagesize($this->storage->getThumbnailPath($media, 'small'))[0]);
+        self::assertSame([400, 300], \array_slice(getimagesize($this->storage->getThumbnailPath($media, 'small')), 0, 2));
         // Plus petite que 1600 px : pas d'agrandissement
         self::assertSame(800, getimagesize($this->storage->getThumbnailPath($media, 'large'))[0]);
+    }
+
+    public function testMissingThumbnailsAreRegenerated(): void
+    {
+        $media = $this->uploader->upload(new File($this->fixtures->png()), 'image.png');
+        $paths = array_map(
+            fn (string $size) => $this->storage->getThumbnailPath($media, $size),
+            array_keys(MediaStorage::THUMB_SIZES),
+        );
+        (new Filesystem())->remove($paths);
+
+        self::assertTrue($this->uploader->regenerateThumbnails($media));
+
+        self::assertSame(400, getimagesize($paths[0])[0]);
+        self::assertSame(800, getimagesize($paths[1])[0]);
     }
 
     public function testVideoIsStrippedOfLocation(): void
