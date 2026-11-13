@@ -214,6 +214,78 @@ class CommentTest extends WebTestCase
         self::assertResponseStatusCodeSame(403);
     }
 
+    public function testLightboxCommentsFragment(): void
+    {
+        // Panneau des petits mots de la visionneuse (lightbox_controller.js)
+        $url = $this->mediaUrl().'/comments';
+
+        $this->client->request('GET', $url);
+        self::assertResponseRedirects('/login');
+
+        $mamy = $this->createUser('mamy@example.com', 'Mamy');
+        $this->createComment($mamy, '<b>Bisous</b>');
+        $this->createComment($mamy, 'Message masqué')->setIsHidden(true);
+        $this->entityManager->flush();
+
+        $this->client->loginUser($this->createUser('papy@example.com', 'Papy'));
+        $this->client->request('GET', $url);
+        self::assertResponseIsSuccessful();
+        self::assertResponseHeaderSame('Content-Type', 'text/html; charset=UTF-8');
+        self::assertStringContainsString('no-store', (string) $this->client->getResponse()->headers->get('Cache-Control'));
+        // Fragment seul, sans la mise en page du site
+        self::assertSelectorNotExists('header');
+        self::assertSelectorExists('.lightbox-comments[data-count="1"]');
+        self::assertSelectorTextContains('.lightbox-comments li', 'Mamy');
+        self::assertSelectorTextNotContains('.lightbox-comments', 'Message masqué');
+        // Contenu échappé : il est inséré tel quel dans la page
+        self::assertStringContainsString('&lt;b&gt;Bisous&lt;/b&gt;', (string) $this->client->getResponse()->getContent());
+        // Formulaire du panneau, envoyé à la même adresse, avec un nom distinct de celui de la fiche
+        self::assertSelectorExists('form[name="lightbox_comment"][action="'.$url.'"] textarea#lightbox_comment_content');
+
+        $this->client->loginUser($this->createUser('papa@example.com', 'Papa', admin: true));
+        $this->client->request('GET', $url);
+        self::assertSelectorExists('.lightbox-comments[data-count="2"]');
+        self::assertSelectorTextContains('.lightbox-comments .comment-hidden', 'Masqué');
+
+        $this->client->request('GET', '/media/999999/comments');
+        self::assertResponseStatusCodeSame(404);
+    }
+
+    public function testMemberPostsACommentFromTheLightbox(): void
+    {
+        $url = $this->mediaUrl().'/comments';
+        $this->client->loginUser($this->createUser('mamy@example.com', 'Mamy'));
+        $crawler = $this->client->request('GET', $url);
+        $form = $crawler->filter('form[name="lightbox_comment"]')->form();
+
+        // Message vide : fragment renvoyé en 422 avec l'erreur, rien d'enregistré
+        $this->client->submit($form, ['lightbox_comment[content]' => '   ']);
+        self::assertResponseStatusCodeSame(422);
+        self::assertSelectorTextContains('.lightbox-comment-form', 'Le commentaire est vide.');
+        self::assertSame(0, $this->entityManager->getRepository(Comment::class)->count());
+
+        // Envoyé : fragment à jour (liste + formulaire vierge), pas de redirection
+        $this->client->submit($form, ['lightbox_comment[content]' => 'Trop belle photo !']);
+        self::assertResponseIsSuccessful();
+        self::assertSelectorExists('.lightbox-comments[data-count="1"]');
+        self::assertSelectorTextContains('.lightbox-comments li', 'Trop belle photo !');
+        self::assertSame('', $this->client->getCrawler()->filter('#lightbox_comment_content')->text());
+
+        $comment = $this->entityManager->getRepository(Comment::class)->findOneBy([]);
+        self::assertSame('mamy@example.com', $comment?->getAuthor()?->getEmail());
+        self::assertSame($this->media->getId(), $comment->getMedia()->getId());
+    }
+
+    public function testLightboxCommentWithoutCsrfTokenIsRejected(): void
+    {
+        $this->client->loginUser($this->createUser('mamy@example.com', 'Mamy'));
+
+        $this->client->request('POST', $this->mediaUrl().'/comments', ['lightbox_comment' => ['content' => 'Coucou']]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(0, $this->entityManager->getRepository(Comment::class)->count());
+    }
+
     private function mediaUrl(): string
     {
         return '/media/'.$this->media->getId();

@@ -7,4 +7,4 @@
     {%- set lightbox_size = thumb_size(media, 'large') -%}
     {%- set lightbox_src = path('media_thumb', {id: media.id, size: 'large'}) -%}
 {%- endif -%}
-{%- if lightbox_size %} data-pswp-src="{{ lightbox_src }}" data-pswp-width="{{ lightbox_size.width }}" data-pswp-height="{{ lightbox_size.height }}"{% endif -%}
+{%- if lightbox_size %} data-pswp-src="{{ lightbox_src }}" data-pswp-width="{{ lightbox_size.width }}" data-pswp-height="{{ lightbox_size.height }}" data-comments-url="{{ path('media_comments', {id: media.id}) }}"{% endif -%}
