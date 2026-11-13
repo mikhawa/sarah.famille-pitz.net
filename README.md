@@ -16,7 +16,11 @@ Depuis les conteneurs, la base est joignable sur `db:3306` et le SMTP sur `mailp
 
 ```bash
 docker compose up -d --build
+# ou dup
 docker compose exec php composer install
+# ou uphp
+docker compose down
+# ou ddo
 ```
 
 Détails : [docs/devops/docker-setup.md](docs/devops/docker-setup.md)
