@@ -1,0 +1,22 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Ajouter des souvenirs — {{ album.title }}{% endblock %}
+
+{% block body %}
+    <p class="breadcrumb"><a href="{{ path('album_show', {slug: album.slug}) }}">‹ {{ album.title }}</a></p>
+
+    <header class="page-header">
+        <h1>Ajouter des souvenirs</h1>
+        <p class="meta">
+            Dans l'album « {{ album.title }} », visibles tout de suite par toute la famille.
+            Les photos sont débarrassées de leurs informations cachées (position GPS, appareil…).
+        </p>
+    </header>
+
+    {# Envoi par lots (assets/admin/media_upload.js) ; Turbo désactivé : le script gère l'envoi lui-même #}
+    {{ form_start(form, {attr: {class: 'upload-form', 'data-turbo': 'false', 'data-list-url': album_url, 'data-list-label': 'Revenir à l\'album'}}) }}
+        {{ form_errors(form) }}
+        {{ form_row(form.files) }}
+        <button type="submit" class="button">Envoyer</button>
+    {{ form_end(form) }}
+{% endblock %}

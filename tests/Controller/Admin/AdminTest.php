@@ -148,27 +148,37 @@ class AdminTest extends WebTestCase
         self::assertEmailCount(0);
     }
 
-    public function testAdminCannotRemoveTheirOwnAdminRights(): void
+    public function testNobodyCanLowerTheirOwnRoleOrDeactivateThemself(): void
     {
+        // Administrateur : pas de champ « Rôle » ; il tente de désactiver son propre compte
         $papa = $this->createUser('papa@example.com', 'Papa', admin: true);
         $this->client->loginUser($papa);
-
-        $crawler = $this->client->request('GET', '/admin/user/'.$papa->getId().'/edit');
-        $this->client->request('POST', '/admin/user/'.$papa->getId().'/edit', ['User' => [
+        $this->postEditForm('/admin/user/'.$papa->getId().'/edit', 'User', [
             'displayName' => 'Papa',
             'email' => 'papa@example.com',
-            'isActive' => '1',
-            // case « Administrateur » décochée
-            '_token' => $crawler->filter('input[name="User[_token]"]')->attr('value'),
-        ]]);
+            // case « Actif » décochée
+        ]);
         self::assertResponseRedirects();
         $this->client->followRedirect();
-        self::assertSelectorTextContains('.alert-danger', 'retirer vos droits');
+        self::assertSelectorTextContains('.alert-danger', 'désactiver votre propre compte');
+
+        // Super-administrateur : il tente de se rétrograder membre
+        $mamy = $this->createUser('mamy@example.com', 'Mamy');
+        $mamy->setLevel(User::LEVEL_SUPER_ADMIN);
+        $this->entityManager->flush();
+        $this->client->loginUser($mamy);
+        $this->postEditForm('/admin/user/'.$mamy->getId().'/edit', 'User', [
+            'displayName' => 'Mamy',
+            'email' => 'mamy@example.com',
+            'level' => (string) User::LEVEL_MEMBER,
+            'isActive' => '1',
+        ]);
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.alert-danger', 'baisser votre propre rôle');
 
         $this->entityManager->clear();
-        $papa = $this->findUser('papa@example.com');
-        self::assertTrue($papa->isAdmin());
-        self::assertTrue($papa->isActive());
+        self::assertTrue($this->findUser('papa@example.com')?->isActive());
+        self::assertTrue($this->findUser('mamy@example.com')?->isSuperAdmin());
     }
 
     public function testAdminCanCreateAlbumAndTag(): void
@@ -224,6 +234,17 @@ class AdminTest extends WebTestCase
         $fields['_token'] = $crawler->filter(\sprintf('input[name="%s[_token]"]', $formName))->attr('value');
 
         // Les boutons d'EasyAdmin sont hors de la balise <form> : on poste directement
+        $this->client->request('POST', $url, [$formName => $fields, 'ea' => ['newForm' => ['btn' => 'saveAndReturn']]]);
+    }
+
+    /**
+     * @param array<string, string> $fields
+     */
+    private function postEditForm(string $url, string $formName, array $fields): void
+    {
+        $crawler = $this->client->request('GET', $url);
+        $fields['_token'] = $crawler->filter(\sprintf('input[name="%s[_token]"]', $formName))->attr('value');
+
         $this->client->request('POST', $url, [$formName => $fields, 'ea' => ['newForm' => ['btn' => 'saveAndReturn']]]);
     }
 

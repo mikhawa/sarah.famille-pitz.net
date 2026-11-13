@@ -16,8 +16,29 @@ Rien n'est public : tout le site est derrière une connexion.
 
 ## Rôles
 
-- `ROLE_USER` : membre de la famille. Consulte les médias et commente.
-- `ROLE_ADMIN` : gère les comptes, albums, tags, médias et modère les commentaires.
+Un seul rôle par compte (`User::setLevel()`), hiérarchie `ROLE_SUPER_ADMIN` > `ROLE_ADMIN` > `ROLE_USER`
+(`role_hierarchy` dans `security.yaml`).
+
+| Rôle               | Voit                               | Peut aussi                                                                                     |
+|--------------------|------------------------------------|------------------------------------------------------------------------------------------------|
+| `ROLE_USER`        | albums et médias publics           | écrire des petits mots ; envoyer des médias dans les albums publics si un admin l'y autorise (`User::$canUpload`) ; supprimer ses propres envois |
+| `ROLE_ADMIN`       | publics et privés                  | régler Public / Privé ; gérer albums, tags, médias, modération ; gérer les comptes **membres** (droit d'envoi compris) |
+| `ROLE_SUPER_ADMIN` | tout, y compris « Super-admin seul » | « Super-admin seul » ; **verrouiller** la visibilité (prioritaire sur les admins) ; nommer / retirer les admins et super-admins |
+
+Création : `php bin/console app:create-admin <email> "<Nom>" [--super]` (jamais de rétrogradation).
+
+### Visibilité (`App\Enum\Visibility`)
+
+- Album : `visibility` (`public`, `private`, `super_admin` ; **privé par défaut**) + `visibility_locked`.
+- Média : `visibility` **nullable** = « comme l'album » (privé sans album) + `visibility_locked`.
+- Règle (`Media::isVisibleTo()`, et la même en DQL : `MediaRepository::restrictToVisible()`) : l'album, s'il existe,
+  doit être visible (barrière : un média public dans un album privé reste caché), puis la visibilité propre du média
+  ou, à défaut, celle de l'album.
+- Toutes les listes (fil, albums et leurs compteurs, tags, voisins précédent/suivant, administration) passent par
+  `restrictToVisible()` ; les accès directs par les voters (`MEDIA_VIEW`, `ALBUM_VIEW`, `COMMENT_VIEW`), avec une
+  **404** sur le site (on ne révèle pas l'existence) et `setEntityPermission()` dans EasyAdmin.
+- Verrou : champ désactivé pour les admins et valeur d'origine remise à l'enregistrement (`VisibilityCrudTrait`).
+- Migration `Version20261113181739` : tout l'existant est devenu privé (choix de l'utilisateur).
 
 ## Sécurité
 
@@ -25,10 +46,11 @@ Rien n'est public : tout le site est derrière une connexion.
 - Pas de formulaire d'inscription : l'admin crée le compte, le membre reçoit un e-mail pour définir son mot de passe
   (`AccountInvitationMailer`, qui réutilise le jeton de `symfonycasts/reset-password-bundle` ; liens valables 48 h).
   L'admin peut renvoyer l'invitation depuis la liste des comptes.
-- L'admin connecté ne peut ni se retirer ses droits, ni se désactiver, ni supprimer son propre compte.
+- Personne ne peut baisser son propre rôle, se désactiver ni supprimer son propre compte (`UserCrudController`).
 - E-mails envoyés de façon synchrone (pas encore de worker Messenger).
 - Limitation des tentatives de connexion (`login_throttling`).
-- Voters : `MediaVoter` (VIEW, COMMENT : membre actif), `CommentVoter` (DELETE : auteur ou admin).
+- Voters : `MediaVoter` (VIEW, COMMENT, DELETE), `AlbumVoter` (VIEW, UPLOAD), `CommentVoter` (VIEW, DELETE),
+  `UserVoter` (MANAGE) ; voir « Rôles » ci-dessus.
 - Non-indexation : en-tête `X-Robots-Tag: noindex, nofollow` et `robots.txt` qui interdit tout.
 - **Protection de l'enfant** : les métadonnées EXIF sensibles (GPS notamment) sont supprimées des photos à l'upload ;
   seule la date de prise de vue est conservée en base.
@@ -74,7 +96,8 @@ Le type est détecté sur le **contenu** du fichier, pas sur son extension.
 - `src/Enum/MediaType` : `photo`, `audio`, `video`
 - `src/Service/` : `MediaUploader` (validation, nettoyage, miniatures), `MediaStorage` (chemins), `Ffmpeg` (ffprobe/ffmpeg),
   `AccountInvitationMailer`
-- `src/Security/Voter/` : `MediaVoter`, `CommentVoter`
+- `src/Security/Voter/` : `MediaVoter`, `AlbumVoter`, `CommentVoter`, `UserVoter`
+- `src/Service/MediaImporter` : enregistrement d'un lot de fichiers (administration et page `/albums/{slug}/envoyer`)
 - `src/Controller/Admin/` : tableau de bord et CRUD EasyAdmin ; `MediaCrudController::upload` (`/admin/media/upload`)
   pour l'envoi de plusieurs fichiers à la fois, rangés dans un album avec des tags
 - `src/Controller/` : front (fil chronologique, albums, tags, fiche média, commentaires), `MediaFileController`

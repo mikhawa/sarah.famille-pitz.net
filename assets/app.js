@@ -6,4 +6,6 @@ import './stimulus_bootstrap.js';
  * which should already be in your base.html.twig.
  */
 import './styles/app.css';
+// Envoi de médias par lots (page « Ajouter des souvenirs » d'un album, membres autorisés)
+import './admin/media_upload.js';
 

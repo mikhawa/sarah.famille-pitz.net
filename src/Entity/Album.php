@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Enum\Visibility;
 use App\Repository\AlbumRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -42,6 +43,14 @@ class Album
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
+
+    // Privé par défaut : un administrateur rend l'album public quand il est prêt
+    #[ORM\Column(length: 20, enumType: Visibility::class, options: ['default' => 'private'])]
+    private Visibility $visibility = Visibility::Private;
+
+    // Verrou du super-administrateur : les administrateurs ne peuvent plus changer la visibilité
+    #[ORM\Column(options: ['default' => false])]
+    private bool $visibilityLocked = false;
 
     public function __construct()
     {
@@ -116,6 +125,42 @@ class Album
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getVisibility(): Visibility
+    {
+        return $this->visibility;
+    }
+
+    // null (champ absent du formulaire) : privé
+    public function setVisibility(?Visibility $visibility): static
+    {
+        $this->visibility = $visibility ?? Visibility::Private;
+
+        return $this;
+    }
+
+    public function isVisibilityLocked(): bool
+    {
+        return $this->visibilityLocked;
+    }
+
+    public function setVisibilityLocked(bool $visibilityLocked): static
+    {
+        $this->visibilityLocked = $visibilityLocked;
+
+        return $this;
+    }
+
+    // Libellé affiché dans l'administration (🔒 : verrouillée par le super-administrateur)
+    public function getVisibilityLabel(): string
+    {
+        return ($this->visibilityLocked ? '🔒 ' : '').$this->visibility->label();
+    }
+
+    public function isVisibleTo(?User $user): bool
+    {
+        return \in_array($this->visibility, Visibility::allowedFor($user), true);
     }
 
     public function __toString(): string

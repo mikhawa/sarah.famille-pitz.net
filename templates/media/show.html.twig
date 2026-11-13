@@ -63,6 +63,14 @@
             {% endif %}
 
             <p><a href="{{ path('media_file', {id: media.id, download: 1}) }}" class="button" data-turbo="false">Télécharger</a></p>
+
+            {% if is_granted('MEDIA_DELETE', media) %}
+                <form method="post" action="{{ path('media_delete', {id: media.id}) }}" class="media-delete"
+                      data-turbo-confirm="Supprimer définitivement ce souvenir ?">
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete-media-' ~ media.id) }}">
+                    <button type="submit">🗑️ Supprimer ce souvenir</button>
+                </form>
+            {% endif %}
         </div>
 
         <section class="comments" id="comments" aria-labelledby="comments-title">

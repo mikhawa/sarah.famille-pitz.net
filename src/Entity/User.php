@@ -15,6 +15,14 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[UniqueEntity(fields: ['email'], message: 'Un compte existe déjà avec cette adresse e-mail.')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
+    // Niveaux d'accès, du plus bas au plus haut (voir Visibility::requiredLevel())
+    public const LEVEL_MEMBER = 1;
+    public const LEVEL_ADMIN = 2;
+    public const LEVEL_SUPER_ADMIN = 3;
+
+    public const ROLE_ADMIN = 'ROLE_ADMIN';
+    public const ROLE_SUPER_ADMIN = 'ROLE_SUPER_ADMIN';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -46,6 +54,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     // Permet de bloquer un compte sans le supprimer
     #[ORM\Column]
     private bool $isActive = true;
+
+    // Membre autorisé à envoyer des médias dans les albums publics (accordé par un administrateur)
+    #[ORM\Column(options: ['default' => false])]
+    private bool $canUpload = false;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
@@ -99,19 +111,85 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function isAdmin(): bool
+    /**
+     * Niveau le plus élevé parmi les rôles (un seul rôle est attribué : membre, administrateur ou super-administrateur)
+     */
+    public function getLevel(): int
     {
-        return \in_array('ROLE_ADMIN', $this->getRoles(), true);
+        return self::levelFromRoles($this->roles);
     }
 
-    // Utilisé par l'administration : case « Administrateur » plutôt qu'une liste de rôles
+    /**
+     * @param list<string> $roles rôles stockés (sans la hiérarchie)
+     */
+    public static function levelFromRoles(array $roles): int
+    {
+        return match (true) {
+            \in_array(self::ROLE_SUPER_ADMIN, $roles, true) => self::LEVEL_SUPER_ADMIN,
+            \in_array(self::ROLE_ADMIN, $roles, true) => self::LEVEL_ADMIN,
+            default => self::LEVEL_MEMBER,
+        };
+    }
+
+    // Administrateur ou super-administrateur
+    public function isAdmin(): bool
+    {
+        return $this->getLevel() >= self::LEVEL_ADMIN;
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return self::LEVEL_SUPER_ADMIN === $this->getLevel();
+    }
+
+    // Utilisé par les tests et l'ancienne case « Administrateur » : membre <-> administrateur
     public function setAdmin(bool $admin): static
     {
-        $roles = array_values(array_diff($this->roles, ['ROLE_ADMIN']));
-        if ($admin) {
-            $roles[] = 'ROLE_ADMIN';
+        return $this->setLevel($admin ? self::LEVEL_ADMIN : self::LEVEL_MEMBER);
+    }
+
+    /**
+     * Remplace le rôle du compte ; les autres rôles éventuels sont conservés
+     */
+    public function setLevel(int $level): static
+    {
+        $roles = array_values(array_diff($this->roles, [self::ROLE_ADMIN, self::ROLE_SUPER_ADMIN]));
+        $role = match ($level) {
+            self::LEVEL_SUPER_ADMIN => self::ROLE_SUPER_ADMIN,
+            self::LEVEL_ADMIN => self::ROLE_ADMIN,
+            self::LEVEL_MEMBER => null,
+            default => throw new \InvalidArgumentException(\sprintf('Niveau inconnu : %d', $level)),
+        };
+        if (null !== $role) {
+            $roles[] = $role;
         }
         $this->roles = $roles;
+
+        return $this;
+    }
+
+    public static function levelLabel(int $level): string
+    {
+        return match ($level) {
+            self::LEVEL_SUPER_ADMIN => 'Super-administrateur',
+            self::LEVEL_ADMIN => 'Administrateur',
+            default => 'Membre',
+        };
+    }
+
+    public function getLevelLabel(): string
+    {
+        return self::levelLabel($this->getLevel());
+    }
+
+    public function canUpload(): bool
+    {
+        return $this->canUpload;
+    }
+
+    public function setCanUpload(bool $canUpload): static
+    {
+        $this->canUpload = $canUpload;
 
         return $this;
     }

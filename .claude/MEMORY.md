@@ -53,10 +53,16 @@ secret GitHub `DEPLOY_USER`, racine web `<home>/app/public` (vHost Conf), `publi
 déploiement jamais lancé), design adapté
 à Sarah (6 ans).
 
-Suite de tests : 64 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/opus/001` à `025` (prochain **026**) ; journal `documentations-dev/001` à `025` (prochain **026**).
+Suite de tests : 74 tests verts (`docker compose exec php php bin/phpunit`).
+Traçabilité : `.claude-tasks/opus/001` à `026` (prochain **027**) ; journal `documentations-dev/001` à `026` (prochain **027**).
 
 ## Décisions prises avec l'utilisateur
+
+- **Rôles et visibilité (2026-11-13, branche `feature/06-messages-on-front`, non commité)** : `ROLE_USER` < `ROLE_ADMIN`
+  < `ROLE_SUPER_ADMIN` ; albums/médias Public / Privé / Super-admin seul + verrou du super-admin ; **tout l'existant
+  privé** après migration ; envoi des membres autorisés (`canUpload`) dans les albums publics, visible tout de suite ;
+  admins gèrent les membres, super-admin gère tout. Détail : `docs/architecture/overview.md` (« Rôles »).
+  En prod : lancer `app:create-admin <email> --super` (utilisateur du site) puis rendre les albums publics.
 
 - Accès : comptes famille individuels créés par l'admin, pas d'inscription libre
 - Admin : EasyAdmin ; stockage : fichiers sur le VPS hors `public/` ; organisation : albums, tags, fil chronologique, commentaires

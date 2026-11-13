@@ -443,9 +443,96 @@ h2 {
     color: #1d6b35;
 }
 
-.alert-error {
+.alert-error,
+.alert-danger {
     background: #fde4e4;
     color: #9b1c1c;
+}
+
+/* Messages de l'envoi par lots (assets/admin/media_upload.js) */
+.alert-info {
+    background: #e6f0fb;
+    color: #1f4e86;
+}
+
+.alert-warning {
+    background: #fff4dc;
+    color: #7a4b00;
+}
+
+.alert ul {
+    margin: 0.5rem 0 0;
+    padding-left: 1.2rem;
+}
+
+.alert p {
+    margin: 0.5rem 0 0;
+}
+
+/* Page « Ajouter des souvenirs » d'un album */
+.upload-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-width: 40rem;
+    padding: 1rem;
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+}
+
+.upload-form label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-weight: 600;
+}
+
+.upload-form .help-text,
+.upload-form small {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.upload-form ul {
+    margin: 0;
+    padding-left: 1.2rem;
+    color: #9b1c1c;
+}
+
+.upload-form .button {
+    align-self: flex-start;
+    border: 0;
+    font: inherit;
+    cursor: pointer;
+}
+
+.upload-form .button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+/* Visibilité d'un album, affichée aux administrateurs */
+.visibility-badge {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0.1rem 0.6rem;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    font-size: 0.85rem;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+/* Suppression d'un média depuis sa fiche */
+.media-delete button {
+    padding: 0.4rem 0.9rem;
+    border: 1px solid #e6b3b3;
+    border-radius: 999px;
+    background: transparent;
+    color: #9b1c1c;
+    font: inherit;
+    cursor: pointer;
 }
 
 @media (max-width: 600px) {

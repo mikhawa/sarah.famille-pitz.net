@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Enum\MediaType;
+use App\Enum\Visibility;
 use App\Repository\MediaRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -78,6 +79,16 @@ class Media
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
+
+    /**
+     * null : « comme l'album » (privé si le média n'a pas d'album). Voir getEffectiveVisibility().
+     */
+    #[ORM\Column(length: 20, nullable: true, enumType: Visibility::class)]
+    private ?Visibility $visibility = null;
+
+    // Verrou du super-administrateur : les administrateurs ne peuvent plus changer la visibilité
+    #[ORM\Column(options: ['default' => false])]
+    private bool $visibilityLocked = false;
 
     public function __construct(MediaType $type, string $storagePath, string $originalFilename, string $mimeType)
     {
@@ -259,6 +270,62 @@ class Media
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getVisibility(): ?Visibility
+    {
+        return $this->visibility;
+    }
+
+    public function setVisibility(?Visibility $visibility): static
+    {
+        $this->visibility = $visibility;
+
+        return $this;
+    }
+
+    public function isVisibilityLocked(): bool
+    {
+        return $this->visibilityLocked;
+    }
+
+    public function setVisibilityLocked(bool $visibilityLocked): static
+    {
+        $this->visibilityLocked = $visibilityLocked;
+
+        return $this;
+    }
+
+    /**
+     * Visibilité propre du média, ou celle de son album (« comme l'album »), ou privé sans album
+     */
+    public function getEffectiveVisibility(): Visibility
+    {
+        return $this->visibility ?? $this->album?->getVisibility() ?? Visibility::Private;
+    }
+
+    // Libellé affiché dans l'administration (🔒 : verrouillée par le super-administrateur)
+    public function getVisibilityLabel(): string
+    {
+        $label = null === $this->visibility
+            ? 'Comme l\'album ('.$this->getEffectiveVisibility()->label().')'
+            : $this->visibility->label();
+
+        return ($this->visibilityLocked ? '🔒 ' : '').$label;
+    }
+
+    /**
+     * Le média est visible si sa visibilité le permet ET si son album (s'il en a un) est lui-même visible :
+     * l'album est une barrière, un média public dans un album privé reste caché.
+     * Même règle en DQL : MediaRepository::restrictToVisible().
+     */
+    public function isVisibleTo(?User $user): bool
+    {
+        if (null !== $this->album && !$this->album->isVisibleTo($user)) {
+            return false;
+        }
+
+        return \in_array($this->getEffectiveVisibility(), Visibility::allowedFor($user), true);
     }
 
     public function __toString(): string

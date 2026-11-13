@@ -9,6 +9,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -17,7 +18,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[AsCommand(
     name: 'app:create-admin',
-    description: 'Crée un compte administrateur (ou promeut un compte existant)',
+    description: 'Crée un compte administrateur ou super-administrateur (ou promeut un compte existant)',
 )]
 class CreateAdminCommand extends Command
 {
@@ -36,7 +37,8 @@ class CreateAdminCommand extends Command
     {
         $this
             ->addArgument('email', InputArgument::REQUIRED, 'Adresse e-mail de connexion')
-            ->addArgument('displayName', InputArgument::OPTIONAL, 'Nom affiché', 'Admin');
+            ->addArgument('displayName', InputArgument::OPTIONAL, 'Nom affiché', 'Admin')
+            ->addOption('super', null, InputOption::VALUE_NONE, 'Super-administrateur : tous les droits, y compris cacher des contenus aux administrateurs');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -51,7 +53,8 @@ class CreateAdminCommand extends Command
         $user
             ->setEmail($email)
             ->setDisplayName($isNew ? $input->getArgument('displayName') : $user->getDisplayName())
-            ->setRoles(['ROLE_ADMIN'])
+            // Jamais de rétrogradation : un super-administrateur promu « admin » le reste
+            ->setLevel(max($isNew ? User::LEVEL_MEMBER : $user->getLevel(), $input->getOption('super') ? User::LEVEL_SUPER_ADMIN : User::LEVEL_ADMIN))
             ->setIsActive(true);
 
         // Le mot de passe est demandé de façon masquée pour ne pas apparaître dans l'historique du shell
@@ -81,9 +84,10 @@ class CreateAdminCommand extends Command
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
+        $role = mb_strtolower(User::levelLabel($user->getLevel()));
         $io->success($isNew
-            ? \sprintf('Administrateur %s créé.', $email)
-            : \sprintf('Compte %s promu administrateur et mot de passe mis à jour.', $email));
+            ? \sprintf('Compte %s créé (%s).', $email, $role)
+            : \sprintf('Compte %s : %s, mot de passe mis à jour.', $email, $role));
 
         return Command::SUCCESS;
     }

@@ -8,6 +8,7 @@ use App\Entity\ResetPasswordRequest;
 use App\Entity\Tag;
 use App\Entity\User;
 use App\Enum\MediaType;
+use App\Enum\Visibility;
 use App\Service\MediaStorage;
 use App\Service\MediaUploader;
 use App\Tests\Support\MediaFixtures;
@@ -316,6 +317,8 @@ class MediaTest extends WebTestCase
     private function storeMedia(string $path): Media
     {
         $media = static::getContainer()->get(MediaUploader::class)->upload(new File($path), basename($path));
+        // Visible par les membres (privé par défaut sans album)
+        $media->setVisibility(Visibility::Public);
         $this->entityManager->persist($media);
         $this->entityManager->flush();
 

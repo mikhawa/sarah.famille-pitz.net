@@ -8,6 +8,7 @@ use App\Entity\ResetPasswordRequest;
 use App\Entity\Tag;
 use App\Entity\User;
 use App\Enum\MediaType;
+use App\Enum\Visibility;
 use App\Repository\MediaRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -296,7 +297,9 @@ class FrontTest extends WebTestCase
             ->setTitle($title)
             ->setTakenAt(null !== $takenAt ? new \DateTimeImmutable($takenAt) : null)
             ->setAlbum($album)
-            ->setDuration($duration);
+            ->setDuration($duration)
+            // Contenus visibles par les membres : « comme l'album » (public) dans un album, public sinon
+            ->setVisibility(null === $album ? Visibility::Public : null);
         foreach ($tags as $tag) {
             $media->addTag($tag);
         }
@@ -312,6 +315,7 @@ class FrontTest extends WebTestCase
             ->setTitle($title)
             ->setSlug($slug)
             ->setDescription($description)
+            ->setVisibility(Visibility::Public)
             ->setEventDate(null !== $eventDate ? new \DateTimeImmutable($eventDate) : null);
         $this->entityManager->persist($album);
         $this->entityManager->flush();
