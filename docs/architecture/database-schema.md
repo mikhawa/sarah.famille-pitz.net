@@ -9,9 +9,10 @@ MariaDB 11.4, `utf8mb4`. Tables et colonnes en `snake_case`.
 | id             | int PK        |                                        |
 | email          | varchar(180)  | unique, identifiant de connexion       |
 | password       | varchar(255)  | hash                                   |
-| roles          | json          | `ROLE_USER`, `ROLE_ADMIN`              |
+| roles          | json          | un seul rôle : `ROLE_ADMIN` ou `ROLE_SUPER_ADMIN` (vide = membre) |
 | display_name   | varchar(100)  | nom affiché (« Mamy », « Papa »…)      |
 | is_active      | bool          | désactiver un compte sans le supprimer |
+| can_upload     | bool          | membre autorisé à envoyer dans les albums publics (défaut 0) |
 | created_at     | datetime_immutable |                                   |
 
 ## `album`
@@ -25,6 +26,8 @@ MariaDB 11.4, `utf8mb4`. Tables et colonnes en `snake_case`.
 | event_date     | date null     | date de l'événement                    |
 | cover_media_id | FK media null | photo de couverture, `ON DELETE SET NULL` |
 | created_at     | datetime_immutable |                                   |
+| visibility     | varchar(20)   | `public`, `private` (défaut), `super_admin` — enum `App\Enum\Visibility` |
+| visibility_locked | bool       | verrou du super-administrateur (défaut 0) |
 
 ## `media`
 
@@ -44,6 +47,8 @@ MariaDB 11.4, `utf8mb4`. Tables et colonnes en `snake_case`.
 | album_id          | FK album null | `ON DELETE SET NULL`                          |
 | uploaded_by_id    | FK user null  | `ON DELETE SET NULL` : le média survit au compte |
 | created_at        | datetime_immutable |                                          |
+| visibility        | varchar(20) null | null = « comme l'album » (privé sans album) ; sinon comme `album.visibility` |
+| visibility_locked | bool          | verrou du super-administrateur (défaut 0)     |
 
 Index : `(taken_at)`, `(created_at)`, `(album_id)`.
 

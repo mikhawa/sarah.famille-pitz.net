@@ -3,6 +3,11 @@ security:
     password_hashers:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
 
+    # Un seul rôle par compte (User::setLevel()) : le super-administrateur a aussi tous les droits d'administrateur
+    role_hierarchy:
+        ROLE_SUPER_ADMIN: [ROLE_ADMIN]
+        ROLE_ADMIN: [ROLE_USER]
+
     providers:
         app_user_provider:
             entity:

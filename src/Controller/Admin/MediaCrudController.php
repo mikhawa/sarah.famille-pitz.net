@@ -6,36 +6,44 @@ use App\Entity\Album;
 use App\Entity\Media;
 use App\Entity\User;
 use App\Enum\MediaType;
-use App\Exception\UnsupportedMediaException;
 use App\Form\MediaUploadType;
 use App\Repository\AlbumRepository;
-use App\Service\MediaUploader;
+use App\Repository\MediaRepository;
+use App\Security\Voter\AlbumVoter;
+use App\Security\Voter\MediaVoter;
+use App\Service\MediaImporter;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminRoute;
+use EasyCorp\Bundle\EasyAdminBundle\Collection\FieldCollection;
+use EasyCorp\Bundle\EasyAdminBundle\Collection\FilterCollection;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Filters;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
+use EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto;
+use EasyCorp\Bundle\EasyAdminBundle\Dto\SearchDto;
 use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\ChoiceField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\Field;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IntegerField;
-use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
+use EasyCorp\Bundle\EasyAdminBundle\Field\TextareaField;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\ChoiceFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Filter\EntityFilter;
 use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGenerator;
 use Symfony\Component\Form\FormError;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class MediaCrudController extends AbstractCrudController
 {
+    use VisibilityCrudTrait;
+
     public function __construct(
-        private readonly MediaUploader $uploader,
+        private readonly MediaImporter $importer,
         private readonly AdminUrlGenerator $adminUrlGenerator,
     ) {
     }
@@ -52,7 +60,22 @@ class MediaCrudController extends AbstractCrudController
             ->setEntityLabelInPlural('Médias')
             ->setDefaultSort(['createdAt' => 'DESC'])
             ->setSearchFields(['title', 'description', 'originalFilename'])
-            ->setPaginatorPageSize(30);
+            ->setPaginatorPageSize(30)
+            // Fiche, modification, suppression d'un média invisible pour ce compte : refusées
+            ->setEntityPermission(MediaVoter::VIEW);
+    }
+
+    public function createIndexQueryBuilder(SearchDto $searchDto, EntityDto $entityDto, FieldCollection $fields, FilterCollection $filters): QueryBuilder
+    {
+        return MediaRepository::restrictToVisible(parent::createIndexQueryBuilder($searchDto, $entityDto, $fields, $filters), $this->getCurrentAdmin(), 'entity');
+    }
+
+    public function updateEntity(EntityManagerInterface $entityManager, $entityInstance): void
+    {
+        /** @var Media $entityInstance */
+        $this->enforceVisibilityLock($entityManager, $entityInstance);
+
+        parent::updateEntity($entityManager, $entityInstance);
     }
 
     public function configureFields(string $pageName): iterable
@@ -73,7 +96,10 @@ class MediaCrudController extends AbstractCrudController
         yield TextareaField::new('description', 'Description')->hideOnIndex();
         yield DateTimeField::new('takenAt', 'Pris le')
             ->setHelp('Lu automatiquement dans la photo ou la vidéo quand c\'est possible.');
-        yield AssociationField::new('album', 'Album');
+        $viewer = $this->getCurrentAdmin();
+        yield AssociationField::new('album', 'Album')
+            ->setQueryBuilder(static fn (QueryBuilder $qb) => AlbumRepository::restrictToVisible($qb, $viewer, 'entity'));
+        yield from $this->visibilityFields(inheritable: true);
         yield AssociationField::new('tags', 'Tags')
             ->setFormTypeOption('by_reference', false)
             ->hideOnIndex();
@@ -99,7 +125,8 @@ class MediaCrudController extends AbstractCrudController
                 'Musique' => MediaType::Audio->value,
                 'Vidéo' => MediaType::Video->value,
             ]))
-            ->add(EntityFilter::new('album', 'Album'))
+            ->add(EntityFilter::new('album', 'Album')
+                ->setFormTypeOption('value_type_options.query_builder', fn (\Doctrine\ORM\EntityRepository $r) => AlbumRepository::restrictToVisible($r->createQueryBuilder('a'), $this->getCurrentAdmin())))
             ->add(EntityFilter::new('tags', 'Tags'));
     }
 
@@ -118,13 +145,18 @@ class MediaCrudController extends AbstractCrudController
     }
 
     #[AdminRoute(path: '/upload', name: 'upload', options: ['methods' => ['GET', 'POST']])]
-    public function upload(Request $request, EntityManagerInterface $entityManager, AlbumRepository $albumRepository): Response
+    public function upload(Request $request, AlbumRepository $albumRepository): Response
     {
         // Arrivée depuis la page d'un album (bouton « Ajouter des photos ») : album présélectionné, retour vers cet album.
         // Le paramètre reste dans l'URL lors de l'envoi (le formulaire est posté sur l'adresse courante).
         $preselectedAlbum = $request->query->has('album') ? $albumRepository->find($request->query->getInt('album')) : null;
+        if (null !== $preselectedAlbum && !$this->isGranted(AlbumVoter::VIEW, $preselectedAlbum)) {
+            $preselectedAlbum = null;
+        }
 
-        $form = $this->createForm(MediaUploadType::class, ['album' => $preselectedAlbum]);
+        $user = $this->getUser();
+        \assert($user instanceof User);
+        $form = $this->createForm(MediaUploadType::class, ['album' => $preselectedAlbum], ['viewer' => $user]);
         $form->handleRequest($request);
         $indexUrl = $this->adminUrlGenerator
             ->setController(self::class)
@@ -138,31 +170,12 @@ class MediaCrudController extends AbstractCrudController
         $isBatch = 'json' === $request->getPreferredFormat();
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $user = $this->getUser();
-            $album = $form->get('album')->getData();
-            $tags = $form->get('tags')->getData();
-            $saved = 0;
-            $errors = [];
-
-            /** @var UploadedFile $file */
-            foreach ($form->get('files')->getData() as $file) {
-                try {
-                    $media = $this->uploader->upload($file, $file->getClientOriginalName(), $user instanceof User ? $user : null);
-                } catch (UnsupportedMediaException $e) {
-                    $errors[] = \sprintf('%s : %s', $file->getClientOriginalName(), $e->getMessage());
-                    continue;
-                }
-
-                $media->setAlbum($album);
-                foreach ($tags as $tag) {
-                    $media->addTag($tag);
-                }
-
-                // Enregistrement fichier par fichier : un échec n'annule pas les envois précédents
-                $entityManager->persist($media);
-                $entityManager->flush();
-                ++$saved;
-            }
+            ['saved' => $saved, 'errors' => $errors] = $this->importer->import(
+                $form->get('files')->getData(),
+                $user,
+                $form->get('album')->getData(),
+                $form->get('tags')->getData(),
+            );
 
             if ($isBatch) {
                 return $this->json(['saved' => $saved, 'errors' => $errors]);

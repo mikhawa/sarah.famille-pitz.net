@@ -6,7 +6,12 @@
     <p class="breadcrumb"><a href="{{ path('album_index') }}">‹ Tous les albums</a></p>
 
     <header class="page-header">
-        <h1>{{ album.title }}</h1>
+        <h1>
+            {{ album.title }}
+            {% if is_granted('ROLE_ADMIN') and album.visibility.value != 'public' %}
+                <span class="visibility-badge" title="Visibilité de l'album">🔒 {{ album.visibility.label }}</span>
+            {% endif %}
+        </h1>
         <p class="meta">
             {% if album.eventDate %}{{ album.eventDate|format_date('full')|capitalize }} · {% endif %}
             {{ medias.totalItems }} {{ medias.totalItems > 1 ? 'souvenirs' : 'souvenir' }}
@@ -17,6 +22,9 @@
         {% if is_granted('ROLE_ADMIN') %}
             {# Page d'envoi de l'administration, album présélectionné ; elle ramène ici une fois l'envoi terminé #}
             <p><a href="{{ path('admin_media_upload', {album: album.id}) }}" class="button" data-turbo="false">＋ Ajouter des photos</a></p>
+        {% elseif is_granted('ALBUM_UPLOAD', album) %}
+            {# Membre autorisé par un administrateur, album public #}
+            <p><a href="{{ path('album_upload', {slug: album.slug}) }}" class="button">＋ Ajouter des photos</a></p>
         {% endif %}
     </header>
 

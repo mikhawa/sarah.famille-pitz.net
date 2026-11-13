@@ -3,11 +3,20 @@
 namespace App\Controller\Admin;
 
 use App\Entity\Comment;
+use App\Entity\User;
+use App\Repository\MediaRepository;
+use App\Security\Voter\CommentVoter;
+use Doctrine\ORM\EntityRepository;
+use Doctrine\ORM\QueryBuilder;
+use EasyCorp\Bundle\EasyAdminBundle\Collection\FieldCollection;
+use EasyCorp\Bundle\EasyAdminBundle\Collection\FilterCollection;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Crud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Filters;
 use EasyCorp\Bundle\EasyAdminBundle\Controller\AbstractCrudController;
+use EasyCorp\Bundle\EasyAdminBundle\Dto\EntityDto;
+use EasyCorp\Bundle\EasyAdminBundle\Dto\SearchDto;
 use EasyCorp\Bundle\EasyAdminBundle\Field\AssociationField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\DateTimeField;
@@ -32,7 +41,17 @@ class CommentCrudController extends AbstractCrudController
             ->setEntityLabelInPlural('Commentaires')
             ->setDefaultSort(['createdAt' => 'DESC'])
             ->setSearchFields(['content', 'author.displayName'])
-            ->setPaginatorPageSize(30);
+            ->setPaginatorPageSize(30)
+            // Commentaire d'un média invisible pour ce compte (« Super-admin seul ») : inaccessible
+            ->setEntityPermission(CommentVoter::VIEW);
+    }
+
+    public function createIndexQueryBuilder(SearchDto $searchDto, EntityDto $entityDto, FieldCollection $fields, FilterCollection $filters): QueryBuilder
+    {
+        $queryBuilder = parent::createIndexQueryBuilder($searchDto, $entityDto, $fields, $filters)
+            ->join('entity.media', 'commentedMedia');
+
+        return MediaRepository::restrictToVisible($queryBuilder, $this->getCurrentAdmin(), 'commentedMedia');
     }
 
     public function configureFields(string $pageName): iterable
@@ -55,7 +74,8 @@ class CommentCrudController extends AbstractCrudController
         return $filters
             ->add(BooleanFilter::new('isHidden', 'Masqué'))
             ->add(EntityFilter::new('author', 'Auteur'))
-            ->add(EntityFilter::new('media', 'Média'));
+            ->add(EntityFilter::new('media', 'Média')
+                ->setFormTypeOption('value_type_options.query_builder', fn (EntityRepository $r) => MediaRepository::restrictToVisible($r->createQueryBuilder('m'), $this->getCurrentAdmin())));
     }
 
     public function configureActions(Actions $actions): Actions
@@ -64,5 +84,13 @@ class CommentCrudController extends AbstractCrudController
             // Les commentaires s'écrivent sur le site, pas dans l'administration
             ->disable(Action::NEW)
             ->add(Crud::PAGE_INDEX, Action::DETAIL);
+    }
+
+    private function getCurrentAdmin(): User
+    {
+        $user = $this->getUser();
+        \assert($user instanceof User);
+
+        return $user;
     }
 }

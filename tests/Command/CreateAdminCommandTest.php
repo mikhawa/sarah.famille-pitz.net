@@ -33,6 +33,23 @@ class CreateAdminCommandTest extends KernelTestCase
         self::assertTrue($user->isAdmin());
         self::assertSame('Papa', $user->getDisplayName());
         self::assertNotSame('un-mot-de-passe-solide', $user->getPassword());
+        self::assertFalse($user->isSuperAdmin());
+    }
+
+    public function testPromotesToSuperAdminAndNeverDemotes(): void
+    {
+        $this->tester->setInputs(['un-mot-de-passe-solide']);
+        $this->tester->execute(['email' => 'papa@example.com', '--super' => true]);
+        $this->tester->assertCommandIsSuccessful();
+
+        // Relancée sans --super : le compte reste super-administrateur
+        $this->tester->setInputs(['un-autre-mot-de-passe']);
+        $this->tester->execute(['email' => 'papa@example.com']);
+        $this->tester->assertCommandIsSuccessful();
+
+        $user = static::getContainer()->get(UserRepository::class)->findOneBy(['email' => 'papa@example.com']);
+        self::assertTrue($user?->isSuperAdmin());
+        self::assertSame(['ROLE_SUPER_ADMIN', 'ROLE_USER'], $user->getRoles());
     }
 
     public function testRejectsShortPassword(): void

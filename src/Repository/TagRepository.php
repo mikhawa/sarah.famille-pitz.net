@@ -4,6 +4,7 @@ namespace App\Repository;
 
 use App\Entity\Media;
 use App\Entity\Tag;
+use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -18,16 +19,18 @@ class TagRepository extends ServiceEntityRepository
     }
 
     /**
-     * Tags utilisés par au moins un média, par ordre alphabétique
+     * Tags utilisés par au moins un média visible par ce compte, par ordre alphabétique
      *
      * @return list<array{name: string, slug: string, mediaCount: int}>
      */
-    public function findUsedWithMediaCount(): array
+    public function findUsedWithMediaCount(User $viewer): array
     {
-        $rows = $this->getEntityManager()->createQueryBuilder()
+        $queryBuilder = $this->getEntityManager()->createQueryBuilder()
             ->select('t.name', 't.slug', 'COUNT(m.id) AS mediaCount')
             ->from(Media::class, 'm')
-            ->join('m.tags', 't')
+            ->join('m.tags', 't');
+
+        $rows = MediaRepository::restrictToVisible($queryBuilder, $viewer)
             ->groupBy('t.id', 't.name', 't.slug')
             ->orderBy('t.name', 'ASC')
             ->getQuery()

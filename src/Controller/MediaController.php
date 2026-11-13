@@ -22,7 +22,7 @@ class MediaController extends AbstractController
 {
     // Les fichiers eux-mêmes sont servis par MediaFileController (/media/{id}/file et /thumb)
     #[Route('/media/{id}', name: 'media_show', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
-    #[IsGranted(MediaVoter::VIEW, subject: 'media')]
+    #[IsGranted(MediaVoter::VIEW, subject: 'media', statusCode: 404)]
     public function show(
         Media $media,
         Request $request,
@@ -52,8 +52,8 @@ class MediaController extends AbstractController
             }
         }
 
-        $older = $mediaRepository->findAdjacent($media, newer: false);
-        $newer = $mediaRepository->findAdjacent($media, newer: true);
+        $older = $mediaRepository->findAdjacent($user, $media, newer: false);
+        $newer = $mediaRepository->findAdjacent($user, $media, newer: true);
 
         // Même sens de lecture que la liste d'où l'on vient : album du plus ancien au plus récent, fil à l'inverse
         $inAlbum = null !== $media->getAlbum();
@@ -73,7 +73,7 @@ class MediaController extends AbstractController
      * POST : envoi d'un petit mot depuis ce panneau ; la réponse est le fragment à jour (422 si le message est refusé).
      */
     #[Route('/media/{id}/comments', name: 'media_comments', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
-    #[IsGranted(MediaVoter::VIEW, subject: 'media')]
+    #[IsGranted(MediaVoter::VIEW, subject: 'media', statusCode: 404)]
     public function comments(
         Media $media,
         Request $request,
@@ -120,6 +120,31 @@ class MediaController extends AbstractController
         return $this->container->get('form.factory')->createNamed('lightbox_comment', CommentType::class, new Comment($media, $user), [
             'action' => $this->generateUrl('media_comments', ['id' => $media->getId()]),
         ]);
+    }
+
+    /**
+     * Suppression d'un média depuis sa fiche : administrateurs, ou le membre qui l'a envoyé (MediaVoter::DELETE).
+     * Les fichiers sont effacés par MediaFileCleanupListener.
+     */
+    #[Route('/media/{id}/delete', name: 'media_delete', requirements: ['id' => '\d+'], methods: ['POST'])]
+    #[IsGranted(MediaVoter::VIEW, subject: 'media', statusCode: 404)]
+    #[IsGranted(MediaVoter::DELETE, subject: 'media')]
+    public function delete(Media $media, Request $request, EntityManagerInterface $entityManager): Response
+    {
+        // Vérifié ici plutôt qu'avec #[IsCsrfTokenValid] : son exception renverrait vers la connexion au lieu d'un 403
+        if (!$this->isCsrfTokenValid('delete-media-'.$media->getId(), $request->getPayload()->getString('_token'))) {
+            throw $this->createAccessDeniedException('Jeton CSRF invalide.');
+        }
+
+        $album = $media->getAlbum();
+        $entityManager->remove($media);
+        $entityManager->flush();
+
+        $this->addFlash('success', 'Souvenir supprimé.');
+
+        return null !== $album
+            ? $this->redirectToRoute('album_show', ['slug' => $album->getSlug()], Response::HTTP_SEE_OTHER)
+            : $this->redirectToRoute('app_home', [], Response::HTTP_SEE_OTHER);
     }
 
     #[Route('/comments/{id}/delete', name: 'comment_delete', requirements: ['id' => '\d+'], methods: ['POST'])]

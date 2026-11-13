@@ -11,7 +11,8 @@
         <ul class="albums">
             {% for album in albums %}
                 {% set stat = stats[album.id] ?? {count: 0, firstVisualId: null} %}
-                {% set cover_id = album.coverMedia and album.coverMedia.type.hasThumbnail ? album.coverMedia.id : stat.firstVisualId %}
+                {# Couverture choisie par l'admin seulement si ce compte peut la voir (média privé dans un album public) #}
+                {% set cover_id = album.coverMedia and album.coverMedia.type.hasThumbnail and is_granted('MEDIA_VIEW', album.coverMedia) ? album.coverMedia.id : stat.firstVisualId %}
                 <li>
                     <a href="{{ path('album_show', {slug: album.slug}) }}" class="album-card">
                         {% if cover_id %}
@@ -19,7 +20,7 @@
                         {% else %}
                             <span class="album-placeholder" aria-hidden="true">📷</span>
                         {% endif %}
-                        <span class="album-title">{{ album.title }}</span>
+                        <span class="album-title">{{ album.title }}{% if is_granted('ROLE_ADMIN') and album.visibility.value != 'public' %} 🔒{% endif %}</span>
                         <span class="album-meta">
                             {% if album.eventDate %}{{ album.eventDate|format_date('long') }} · {% endif %}
                             {{ stat.count }} {{ stat.count > 1 ? 'souvenirs' : 'souvenir' }}

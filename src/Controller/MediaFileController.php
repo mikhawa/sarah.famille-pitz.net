@@ -31,7 +31,7 @@ class MediaFileController extends AbstractController
     }
 
     #[Route('/file', name: 'media_file', methods: ['GET'])]
-    #[IsGranted(MediaVoter::VIEW, subject: 'media')]
+    #[IsGranted(MediaVoter::VIEW, subject: 'media', statusCode: 404)]
     public function original(Media $media, Request $request): Response
     {
         $disposition = $request->query->getBoolean('download')
@@ -50,7 +50,7 @@ class MediaFileController extends AbstractController
     }
 
     #[Route('/thumb/{size}', name: 'media_thumb', requirements: ['size' => 'small|large'], methods: ['GET'])]
-    #[IsGranted(MediaVoter::VIEW, subject: 'media')]
+    #[IsGranted(MediaVoter::VIEW, subject: 'media', statusCode: 404)]
     public function thumbnail(Media $media, string $size): Response
     {
         return $this->send($this->storage->getThumbnailPath($media, $size), 'image/webp');

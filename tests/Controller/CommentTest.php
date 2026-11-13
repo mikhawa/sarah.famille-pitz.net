@@ -9,6 +9,7 @@ use App\Entity\ResetPasswordRequest;
 use App\Entity\Tag;
 use App\Entity\User;
 use App\Enum\MediaType;
+use App\Enum\Visibility;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -29,7 +30,9 @@ class CommentTest extends WebTestCase
             $this->entityManager->createQuery('DELETE FROM '.$class)->execute();
         }
 
-        $this->media = (new Media(MediaType::Photo, bin2hex(random_bytes(8)).'.jpg', 'plage.jpg', 'image/jpeg'))->setTitle('Plage');
+        $this->media = (new Media(MediaType::Photo, bin2hex(random_bytes(8)).'.jpg', 'plage.jpg', 'image/jpeg'))
+            ->setTitle('Plage')
+            ->setVisibility(Visibility::Public);
         $this->entityManager->persist($this->media);
         $this->entityManager->flush();
     }
