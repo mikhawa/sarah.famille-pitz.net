@@ -41,13 +41,13 @@ final class MediaFixtures
         return $this->write('photo.jpg', substr($jpeg, 0, 2).$segment.substr($jpeg, 2));
     }
 
-    public function png(): string
+    public function png(int $width = 800, int $height = 600, string $name = 'image.png'): string
     {
-        $image = imagecreatetruecolor(800, 600);
+        $image = imagecreatetruecolor($width, $height);
         ob_start();
         imagepng($image);
 
-        return $this->write('image.png', (string) ob_get_clean());
+        return $this->write($name, (string) ob_get_clean());
     }
 
     /**

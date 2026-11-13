@@ -41,8 +41,14 @@ class MediaUploader
         'video/quicktime' => [MediaType::Video, 'mov'],
     ];
 
-    // Au-delà, le décodage GD dépasserait la mémoire disponible
-    private const MAX_PIXELS = 40_000_000;
+    // Plus grand côté des photos enregistrées : au-delà, réduction automatique (photos agrandies, appareils très définis)
+    public const MAX_DIMENSION = 6000;
+
+    // Mémoire occupée par GD pour une image décodée (4 octets par pixel en couleurs vraies, plus une marge)
+    private const BYTES_PER_PIXEL = 5;
+
+    // Plafond du seuil de refus, même avec beaucoup de mémoire
+    private const MAX_PIXELS_CEILING = 150_000_000;
 
     private const JPEG_QUALITY = 90;
     private const THUMB_QUALITY = 80;
@@ -104,8 +110,11 @@ class MediaUploader
         if (false === $info) {
             throw new UnsupportedMediaException('Image illisible ou endommagée.');
         }
-        if ($info[0] * $info[1] > self::MAX_PIXELS) {
-            throw new UnsupportedMediaException('Image trop grande (40 mégapixels maximum).');
+        if (!$this->canDecode($info[0], $info[1])) {
+            throw new UnsupportedMediaException(\sprintf(
+                'Image trop grande (%d × %d pixels, soit %d mégapixels) : réduisez-la avant de l\'envoyer.',
+                $info[0], $info[1], intdiv($info[0] * $info[1], 1_000_000),
+            ));
         }
 
         $target = $this->storage->getOriginalPath($media);
@@ -135,6 +144,8 @@ class MediaUploader
             throw new UnsupportedMediaException('Image illisible ou endommagée.');
         }
 
+        // Réduction avant la rotation : la copie tournée est faite sur l'image déjà réduite (moins de mémoire)
+        $image = $this->limitDimensions($image);
         $image = $this->applyOrientation($image, (int) ($exif['Orientation'] ?? 1));
 
         // Le réencodage n'écrit aucune métadonnée : EXIF, GPS, XMP disparaissent
@@ -276,6 +287,60 @@ class MediaUploader
         }
 
         return $resized;
+    }
+
+    /**
+     * Ramène le plus grand côté à MAX_DIMENSION, proportions conservées
+     */
+    private function limitDimensions(\GdImage $image): \GdImage
+    {
+        $width = imagesx($image);
+        $height = imagesy($image);
+        if (max($width, $height) <= self::MAX_DIMENSION) {
+            return $image;
+        }
+
+        $targetWidth = $width >= $height ? self::MAX_DIMENSION : max(1, (int) round($width * self::MAX_DIMENSION / $height));
+
+        return $this->resizeToWidth($image, $targetWidth);
+    }
+
+    /**
+     * GD peut-il décoder l'image sans dépasser memory_limit ? Il faut l'image entière, plus sa copie réduite ou tournée.
+     * Mesuré : ~5 octets par pixel ; jusqu'à ~60 Mpx avec 512 Mo (Docker), ~140 Mpx avec 1 Go (prod).
+     */
+    private function canDecode(int $width, int $height): bool
+    {
+        $pixels = $width * $height;
+        if ($pixels > self::MAX_PIXELS_CEILING) {
+            return false;
+        }
+
+        $limit = $this->parseBytes((string) ini_get('memory_limit'));
+        if ($limit <= 0) {
+            return true;
+        }
+
+        $scale = min(1, self::MAX_DIMENSION / max($width, $height));
+        $needed = ($pixels + (int) ($pixels * $scale * $scale)) * self::BYTES_PER_PIXEL;
+
+        return $needed <= ($limit - memory_get_usage()) * 0.8;
+    }
+
+    /**
+     * « 512M », « 1G », « -1 »… en octets (-1 : pas de limite)
+     */
+    private function parseBytes(string $value): int
+    {
+        $value = trim($value);
+        $number = (int) $value;
+
+        return match (strtolower(substr($value, -1))) {
+            'g' => $number * 1024 ** 3,
+            'm' => $number * 1024 ** 2,
+            'k' => $number * 1024,
+            default => $number,
+        };
     }
 
     /**
