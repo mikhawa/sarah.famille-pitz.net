@@ -76,6 +76,19 @@ class MediaUploaderTest extends KernelTestCase
         self::assertSame(800, getimagesize($this->storage->getThumbnailPath($media, 'large'))[0]);
     }
 
+    public function testOversizedPhotoIsScaledDown(): void
+    {
+        // Image très large mais légère en mémoire (une photo agrandie par IA ferait plusieurs dizaines de mégapixels)
+        $media = $this->uploader->upload(new File($this->fixtures->png(8000, 400, 'large.png')), 'large.png');
+
+        self::assertSame([MediaUploader::MAX_DIMENSION, 300], [$media->getWidth(), $media->getHeight()]);
+        self::assertSame([MediaUploader::MAX_DIMENSION, 300], \array_slice(getimagesize($this->storage->getOriginalPath($media)), 0, 2));
+
+        // Portrait : c'est la hauteur qui est ramenée à la limite
+        $media = $this->uploader->upload(new File($this->fixtures->png(300, 9000, 'tall.png')), 'tall.png');
+        self::assertSame([200, MediaUploader::MAX_DIMENSION], [$media->getWidth(), $media->getHeight()]);
+    }
+
     public function testMissingThumbnailsAreRegenerated(): void
     {
         $media = $this->uploader->upload(new File($this->fixtures->png()), 'image.png');

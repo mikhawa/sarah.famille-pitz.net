@@ -2,7 +2,7 @@
 
 {% form_theme form '@EasyAdmin/crud/form_theme.html.twig' %}
 
-{% block page_title %}Ajouter des médias{% endblock %}
+{% block page_title %}Ajouter des médias{% if preselected_album %} à l'album « {{ preselected_album.title }} »{% endif %}{% endblock %}
 
 {% block main %}
     <p class="text-muted">
@@ -11,7 +11,7 @@
         Vous pouvez choisir autant de fichiers que vous voulez : ils sont envoyés par petits lots, l'un après l'autre.
     </p>
 
-    {{ form_start(form, {attr: {'data-list-url': index_url}}) }}
+    {{ form_start(form, {attr: {'data-list-url': index_url, 'data-list-label': index_label}}) }}
         {{ form_row(form.files) }}
         {{ form_row(form.album) }}
         {{ form_row(form.tags) }}

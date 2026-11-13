@@ -2,11 +2,13 @@
 
 namespace App\Controller\Admin;
 
+use App\Entity\Album;
 use App\Entity\Media;
 use App\Entity\User;
 use App\Enum\MediaType;
 use App\Exception\UnsupportedMediaException;
 use App\Form\MediaUploadType;
+use App\Repository\AlbumRepository;
 use App\Service\MediaUploader;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminRoute;
@@ -116,14 +118,22 @@ class MediaCrudController extends AbstractCrudController
     }
 
     #[AdminRoute(path: '/upload', name: 'upload', options: ['methods' => ['GET', 'POST']])]
-    public function upload(Request $request, EntityManagerInterface $entityManager): Response
+    public function upload(Request $request, EntityManagerInterface $entityManager, AlbumRepository $albumRepository): Response
     {
-        $form = $this->createForm(MediaUploadType::class);
+        // Arrivée depuis la page d'un album (bouton « Ajouter des photos ») : album présélectionné, retour vers cet album.
+        // Le paramètre reste dans l'URL lors de l'envoi (le formulaire est posté sur l'adresse courante).
+        $preselectedAlbum = $request->query->has('album') ? $albumRepository->find($request->query->getInt('album')) : null;
+
+        $form = $this->createForm(MediaUploadType::class, ['album' => $preselectedAlbum]);
         $form->handleRequest($request);
         $indexUrl = $this->adminUrlGenerator
             ->setController(self::class)
             ->setAction(Action::INDEX)
+            ->unset('album') // recopié sinon depuis l'adresse courante
             ->generateUrl();
+        // Album choisi au final (il a pu être changé dans la liste), sinon liste des médias
+        $returnAlbum = null === $preselectedAlbum ? null : ($form->isSubmitted() ? $form->get('album')->getData() : $preselectedAlbum);
+        $returnUrl = $returnAlbum instanceof Album ? $this->generateUrl('album_show', ['slug' => $returnAlbum->getSlug()]) : $indexUrl;
         // Envoi par lots du script assets/admin/media_upload.js : bilan en JSON, affiché par la page elle-même
         $isBatch = 'json' === $request->getPreferredFormat();
 
@@ -166,7 +176,8 @@ class MediaCrudController extends AbstractCrudController
                 $this->addFlash('danger', htmlspecialchars($error));
             }
 
-            return $this->redirect($indexUrl);
+            // Le site n'affiche que les messages de succès : en cas de refus, liste de l'admin pour voir les erreurs
+            return $this->redirect([] === $errors ? $returnUrl : $indexUrl);
         }
 
         if ($isBatch && $form->isSubmitted()) {
@@ -178,7 +189,9 @@ class MediaCrudController extends AbstractCrudController
         return $this->render('admin/media/upload.html.twig', [
             'form' => $form,
             // Lien affiché par le script d'envoi par lots une fois tous les lots envoyés
-            'index_url' => $indexUrl,
+            'index_url' => $returnUrl,
+            'index_label' => $returnAlbum instanceof Album ? 'Revenir à l\'album' : 'Voir la liste des médias',
+            'preselected_album' => $preselectedAlbum,
         ], new Response(null, $form->isSubmitted() ? 422 : 200));
     }
 

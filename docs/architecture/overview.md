@@ -55,7 +55,7 @@ Le type est détecté sur le **contenu** du fichier, pas sur son extension.
 
 | Type   | Formats acceptés          | Traitement                                                                           |
 |--------|---------------------------|--------------------------------------------------------------------------------------|
-| Photo  | JPEG, PNG, WebP, GIF      | Orientation EXIF appliquée puis **réencodage GD** : toutes les métadonnées (GPS compris) disparaissent. Date de prise de vue conservée en base. GIF copié tel quel (animation). 40 mégapixels max. |
+| Photo  | JPEG, PNG, WebP, GIF      | Orientation EXIF appliquée puis **réencodage GD** : toutes les métadonnées (GPS compris) disparaissent. Date de prise de vue conservée en base. Plus grand côté ramené à 6000 px. GIF copié tel quel (animation). Refus au-delà de ce que la mémoire permet de décoder (~60 Mpx avec 512 Mo, ~140 Mpx avec 1 Go en prod). |
 | Vidéo  | MP4, WebM, MOV            | `ffmpeg -map_metadata -1 -c copy` : métadonnées (GPS compris) retirées **sans réencodage**, `faststart` pour MP4/MOV. Durée, dimensions et date de tournage lues avant nettoyage. Image d'aperçu extraite à 1 s. |
 | Audio  | MP3, M4A, OGG, WAV, FLAC  | Copié tel quel, durée lue avec ffprobe.                                               |
 
