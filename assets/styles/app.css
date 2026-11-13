@@ -572,7 +572,8 @@ h2 {
     --pswp-bg: #2d2a32;
 }
 
-.pswp__button--media-page {
+/* « .pswp » en plus : photoswipe.css, chargé après ce fichier, impose display: block à .pswp__button */
+.pswp .pswp__button--media-page {
     display: grid;
     place-items: center;
     width: 50px;
@@ -591,7 +592,7 @@ h2 {
 }
 
 /* Bouton 💬 : ouvre / referme le panneau des petits mots, avec leur nombre en pastille */
-.pswp__button--comments-toggle {
+.pswp .pswp__button--comments-toggle {
     position: relative;
     display: grid;
     place-items: center;

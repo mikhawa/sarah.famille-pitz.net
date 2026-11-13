@@ -54,7 +54,7 @@ déploiement jamais lancé), design adapté
 à Sarah (6 ans).
 
 Suite de tests : 64 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/opus/001` à `024` (prochain **025**) ; journal `documentations-dev/001` à `024` (prochain **025**).
+Traçabilité : `.claude-tasks/opus/001` à `025` (prochain **026**) ; journal `documentations-dev/001` à `025` (prochain **026**).
 
 ## Décisions prises avec l'utilisateur
 
