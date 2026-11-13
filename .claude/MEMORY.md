@@ -53,8 +53,8 @@ secret GitHub `DEPLOY_USER`, racine web `<home>/app/public` (vHost Conf), `publi
 déploiement jamais lancé), design adapté
 à Sarah (6 ans).
 
-Suite de tests : 58 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/opus/001` à `018` (prochain **019**) ; journal `documentations-dev/001` à `018` (prochain **019**).
+Suite de tests : 60 tests verts (`docker compose exec php php bin/phpunit`).
+Traçabilité : `.claude-tasks/opus/001` à `021` (prochain **022**) ; journal `documentations-dev/001` à `021` (prochain **022**).
 
 ## Décisions prises avec l'utilisateur
 

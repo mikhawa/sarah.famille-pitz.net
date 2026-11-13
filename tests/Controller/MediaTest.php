@@ -222,6 +222,51 @@ class MediaTest extends WebTestCase
         self::assertSame(['Choisissez au moins un fichier.'], json_decode((string) $this->client->getResponse()->getContent(), true)['errors']);
     }
 
+    public function testAdminAddsPhotosFromTheAlbumPage(): void
+    {
+        $album = (new Album())->setTitle('Vacances')->setSlug('vacances');
+        $this->entityManager->persist($album);
+        $this->entityManager->flush();
+
+        // Bouton réservé aux administrateurs
+        $this->client->loginUser($this->createUser('mamy@example.com'));
+        $this->client->request('GET', '/albums/vacances');
+        self::assertSelectorNotExists('a[href^="/admin/media/upload"]');
+
+        $this->client->loginUser($this->createUser('papa@example.com', admin: true));
+        $crawler = $this->client->request('GET', '/albums/vacances');
+        $link = $crawler->filter('a[href^="/admin/media/upload"]');
+        self::assertCount(1, $link);
+
+        // Page d'envoi avec l'album présélectionné et un retour vers l'album
+        $uploadUrl = (string) $link->attr('href');
+        $crawler = $this->client->request('GET', $uploadUrl);
+        self::assertResponseIsSuccessful();
+        self::assertSame((string) $album->getId(), $crawler->filter('select[name="media_upload[album]"] option[selected]')->attr('value'));
+        self::assertSelectorExists('form[name="media_upload"][data-list-url="/albums/vacances"]');
+        $token = $crawler->filter('input[name="media_upload[_token]"]')->attr('value');
+
+        // Formulaire posté sur l'adresse courante (paramètre album conservé) : retour sur la page de l'album
+        $this->client->request('POST', $uploadUrl, [
+            'media_upload' => ['album' => $album->getId(), '_token' => $token],
+        ], [
+            'media_upload' => ['files' => [
+                new UploadedFile($this->fixtures->png(), 'plage.png', test: true),
+                new UploadedFile($this->fixtures->jpegWithGps(), 'chateau.jpg', test: true),
+            ]],
+        ]);
+        self::assertResponseRedirects('/albums/vacances');
+        $this->client->followRedirect();
+        self::assertSelectorTextContains('.alert-success', '2 médias ajoutés');
+        self::assertSelectorTextContains('.meta', '2 souvenirs');
+
+        // Album inconnu : simplement pas de présélection
+        $this->client->request('GET', '/admin/media/upload?album=999999');
+        self::assertResponseIsSuccessful();
+        // Retour vers la liste des médias de l'admin, pas vers un album
+        self::assertStringEndsWith('/admin/media', (string) $this->client->getCrawler()->filter('form[name="media_upload"]')->attr('data-list-url'));
+    }
+
     public function testUploadWithoutFileIsRejected(): void
     {
         $this->client->loginUser($this->createUser('papa@example.com', admin: true));

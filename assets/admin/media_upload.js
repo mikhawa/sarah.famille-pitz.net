@@ -109,7 +109,7 @@ async function sendBatch(form, input, batch) {
 
 async function uploadInBatches(form, input, files) {
     const button = form.querySelector('button[type="submit"]');
-    const listLink = { href: form.dataset.listUrl, label: 'Voir la liste des médias' };
+    const listLink = { href: form.dataset.listUrl, label: form.dataset.listLabel || 'Voir la liste des médias' };
 
     const tooBig = files.filter((file) => file.size > MAX_FILE_BYTES);
     if (tooBig.length > 0) {
