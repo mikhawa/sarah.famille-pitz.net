@@ -12,6 +12,7 @@ use App\Security\Voter\CommentVoter;
 use App\Security\Voter\MediaVoter;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -64,6 +65,60 @@ class MediaController extends AbstractController
             'next' => $inAlbum ? $newer : $older,
             'comments' => $commentRepository->findForMedia($media, includeHidden: $this->isGranted('ROLE_ADMIN')),
             'comment_form' => $form,
+        ]);
+    }
+
+    /**
+     * Petits mots d'une photo, en fragment HTML, pour le panneau de la visionneuse (lightbox_controller.js).
+     * POST : envoi d'un petit mot depuis ce panneau ; la réponse est le fragment à jour (422 si le message est refusé).
+     */
+    #[Route('/media/{id}/comments', name: 'media_comments', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
+    #[IsGranted(MediaVoter::VIEW, subject: 'media')]
+    public function comments(
+        Media $media,
+        Request $request,
+        CommentRepository $commentRepository,
+        EntityManagerInterface $entityManager,
+    ): Response {
+        $user = $this->getUser();
+        \assert($user instanceof User);
+
+        $form = $this->createLightboxCommentForm($media, $user);
+        $form->handleRequest($request);
+        $status = Response::HTTP_OK;
+
+        if ($form->isSubmitted()) {
+            $this->denyAccessUnlessGranted(MediaVoter::COMMENT, $media);
+
+            if ($form->isValid()) {
+                $entityManager->persist($form->getData());
+                $entityManager->flush();
+                // Formulaire vierge pour le petit mot suivant
+                $form = $this->createLightboxCommentForm($media, $user);
+            } else {
+                $status = Response::HTTP_UNPROCESSABLE_ENTITY;
+            }
+        }
+
+        $response = $this->render('media/_lightbox_comments.html.twig', [
+            'media' => $media,
+            'comments' => $commentRepository->findForMedia($media, includeHidden: $this->isGranted('ROLE_ADMIN')),
+            'comment_form' => $form,
+        ], new Response(null, $status));
+        // Toujours à jour (nouveau petit mot, modération) et jamais dans un cache partagé
+        $response->setPrivate();
+        $response->headers->addCacheControlDirective('no-store');
+
+        return $response;
+    }
+
+    /**
+     * Nom distinct du formulaire de la fiche : les deux coexistent quand la visionneuse s'ouvre sur la fiche (identifiants HTML)
+     */
+    private function createLightboxCommentForm(Media $media, User $user): FormInterface
+    {
+        return $this->container->get('form.factory')->createNamed('lightbox_comment', CommentType::class, new Comment($media, $user), [
+            'action' => $this->generateUrl('media_comments', ['id' => $media->getId()]),
         ]);
     }
 

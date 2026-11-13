@@ -1,0 +1,29 @@
+{#- Fragment chargé par la visionneuse (lightbox_controller.js) : petits mots d'une photo et formulaire d'envoi.
+    data-count : nombre affiché sur le bouton 💬. -#}
+<div class="lightbox-comments" data-count="{{ comments|length }}">
+    <p class="lightbox-comments-title"><strong>Petits mots{% if comments is not empty %} ({{ comments|length }}){% endif %}</strong></p>
+    {% if comments is empty %}
+        <p class="lightbox-comments-empty">Pas encore de petit mot.</p>
+    {% else %}
+        <ol>
+            {% for comment in comments %}
+                <li{% if comment.hidden %} class="comment-hidden"{% endif %}>
+                    <p class="comment-meta">
+                        <strong>{{ comment.author ? comment.author.displayName : 'Ancien membre' }}</strong>
+                        · <time datetime="{{ comment.createdAt|date('c') }}">{{ comment.createdAt|format_datetime('medium', 'short') }}</time>
+                        {% if comment.hidden %}<span class="comment-badge">Masqué</span>{% endif %}
+                    </p>
+                    <p class="comment-content">{{ comment.content|nl2br }}</p>
+                </li>
+            {% endfor %}
+        </ol>
+    {% endif %}
+
+    {% if is_granted('MEDIA_COMMENT', media) %}
+        {# Envoyé par la visionneuse (fetch) : la réponse remplace ce fragment #}
+        {{ form_start(comment_form, {attr: {class: 'comment-form lightbox-comment-form', 'data-lightbox-comment-form': '', 'data-turbo': 'false'}}) }}
+            {{ form_row(comment_form.content) }}
+            <button type="submit" class="button">Envoyer</button>
+        {{ form_end(comment_form) }}
+    {% endif %}
+</div>

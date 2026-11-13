@@ -202,6 +202,7 @@ class FrontTest extends WebTestCase
 
         // Grande miniature réduite à 1600 px de large, hauteur proportionnelle ; le lien reste la fiche
         self::assertSame('/media/'.$large->getId().'/thumb/large', $tile($large)->attr('data-pswp-src'));
+        self::assertSame('/media/'.$large->getId().'/comments', $tile($large)->attr('data-comments-url'));
         self::assertSame(['1600', '1200'], [$tile($large)->attr('data-pswp-width'), $tile($large)->attr('data-pswp-height')]);
         // Jamais agrandie
         self::assertSame(['800', '600'], [$tile($small)->attr('data-pswp-width'), $tile($small)->attr('data-pswp-height')]);

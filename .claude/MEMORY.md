@@ -53,8 +53,8 @@ secret GitHub `DEPLOY_USER`, racine web `<home>/app/public` (vHost Conf), `publi
 déploiement jamais lancé), design adapté
 à Sarah (6 ans).
 
-Suite de tests : 61 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/opus/001` à `022` (prochain **023**) ; journal `documentations-dev/001` à `022` (prochain **023**).
+Suite de tests : 64 tests verts (`docker compose exec php php bin/phpunit`).
+Traçabilité : `.claude-tasks/opus/001` à `024` (prochain **025**) ; journal `documentations-dev/001` à `024` (prochain **025**).
 
 ## Décisions prises avec l'utilisateur
 
@@ -108,4 +108,6 @@ Les médias envoyés (`var/storage/media/`) et la base ne sont pas dans git : il
   `csrf_protection_controller.js`. Sans lui, les formulaires à jeton sans état (`token_id: submit`, ex. envoi de médias)
   échouent en 422 dès que la session a déjà utilisé le double-submit (« double-submit info … is now missing »)
 - Twig : le résultat d'`include()` mis dans une variable (`set`) est ré-échappé à l'affichage → l'appeler directement dans la balise
+- Dev : ne jamais laisser `public/assets/` (issu d'`asset-map:compile`) : AssetMapper sert alors ces fichiers figés
+  et les modifications de `assets/` (JS, CSS) n'apparaissent plus. `rm -rf public/assets` + `cache:clear`
 - Fins de ligne : l'IDE Windows convertit en CRLF, le dépôt est en LF

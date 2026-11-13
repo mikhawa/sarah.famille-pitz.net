@@ -536,7 +536,16 @@ h2 {
     gap: 0.4rem;
 }
 
+/* « Ton petit mot » au-dessus du champ, qui prend toute la largeur */
+.comment-form label {
+    display: block;
+    margin-bottom: 0.3rem;
+}
+
 .comment-form textarea {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
     padding: 0.6rem 0.75rem;
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -573,4 +582,148 @@ h2 {
 .pswp-media-page {
     font-size: 1.4rem;
     line-height: 1;
+}
+
+.pswp__button--media-page[hidden],
+.pswp__button--comments-toggle[hidden],
+.pswp__comments-panel[hidden] {
+    display: none !important;
+}
+
+/* Bouton 💬 : ouvre / referme le panneau des petits mots, avec leur nombre en pastille */
+.pswp__button--comments-toggle {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 50px;
+    font-size: 1.4rem;
+    line-height: 1;
+}
+
+.pswp__button--comments-toggle[aria-expanded="false"] .pswp-comments-icon {
+    opacity: 0.6;
+}
+
+.pswp-comments-count:not(:empty) {
+    position: absolute;
+    top: 8px;
+    right: 4px;
+    min-width: 1.2rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.2rem;
+    text-align: center;
+}
+
+/* Panneau des petits mots, par-dessus le bas de la photo : fond sombre translucide pour rester lisible */
+.pswp__comments-panel {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 20;
+    width: min(100%, 46rem);
+    max-height: 40vh;
+    margin: 0 auto;
+    padding: 0.9rem 1.1rem calc(0.9rem + env(safe-area-inset-bottom));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: var(--radius) var(--radius) 0 0;
+    background: rgb(30 27 34 / 82%);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    font-size: 1.05rem;
+    line-height: 1.45;
+    text-shadow: 0 1px 2px rgb(0 0 0 / 50%);
+    transition: opacity 0.25s;
+}
+
+/* Masqué avec les autres commandes (toucher la photo) */
+.pswp:not(.pswp--ui-visible) .pswp__comments-panel {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.lightbox-comments-title {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.25rem 1rem;
+    margin: 0 0 0.5rem;
+}
+
+.lightbox-comments-title a {
+    color: #ffd3dc;
+    font-weight: 600;
+}
+
+.lightbox-comments ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lightbox-comments li + li {
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid rgb(255 255 255 / 15%);
+}
+
+.lightbox-comments .comment-meta,
+.lightbox-comments .comment-meta strong {
+    color: #fff;
+}
+
+.lightbox-comments .comment-meta {
+    opacity: 0.85;
+}
+
+.lightbox-comments .comment-hidden {
+    border: 0;
+}
+
+.lightbox-comments-empty {
+    margin: 0;
+    opacity: 0.85;
+}
+
+/* Formulaire du panneau : champ clair sur le fond sombre */
+.lightbox-comment-form {
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid rgb(255 255 255 / 25%);
+    text-shadow: none;
+}
+
+.lightbox-comment-form label {
+    font-weight: 600;
+}
+
+.lightbox-comment-form textarea {
+    border-color: transparent;
+    background: rgb(255 255 255 / 95%);
+    color: var(--text);
+    font-size: 1rem;
+}
+
+.lightbox-comment-form textarea:focus {
+    outline: 3px solid var(--accent);
+    outline-offset: 1px;
+}
+
+.lightbox-comment-form .button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.lightbox-comment-form ul,
+.lightbox-form-error {
+    margin: 0;
+    color: #ffc2cc;
+    font-weight: 600;
 }
