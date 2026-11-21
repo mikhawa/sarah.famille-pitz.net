@@ -1,6 +1,6 @@
 # Mémoire du projet — état d'avancement
 
-Dernière mise à jour : 2026-11-21 — branche `feature/08-retouches` (pagination 72/page commitée en 6f2296c ; non commité : correction du test de pagination + fiches 028, visionneuse sur tout l'album/tag + fiches 029 ; en cours : visionneuse de l'accueil, fiches 030)
+Dernière mise à jour : 2026-11-21 — branche `feature/08-retouches` (tout commité jusqu'à 77429f5 : 72/page, visionneuse sur toutes les photos des albums, tags et de l'accueil)
 
 ## Où on en est
 
@@ -71,11 +71,13 @@ puis rendre publics les albums à partager (la migration a tout passé en privé
   Liste JSON dans `data-lightbox-items-value` (gabarit `media/_lightbox_grid.html.twig`, fonctions Twig `lightbox_items()`
   et `lightbox_image()`), ouverture à l'index global par `loadAndOpen` ; ℹ️ et 💬 lisent `href`/`commentsUrl` dans les
   données de la diapo (filtre `domItemData` pour le mode sans liste : fiche média).
-- Accueil (en cours) : **chargement à la demande** de la liste (route JSON) au premier clic, car le fil peut contenir des
+- Accueil : **chargement à la demande** de la liste (`GET /visionneuse/fil?type=`, route `feed_lightbox`, `LightboxController`,
+  service `LightboxItems`) au premier clic ; échec ou session expirée → on suit le lien vers la fiche, car le fil peut contenir des
   milliers de photos — pas de JSON dans la page.
-- Non vérifié dans un navigateur : animation de zoom depuis la vignette (filtre `itemData` → `element`), sinon fondu.
+- Vérifié dans le navigateur par l'utilisateur (2026-11-21) : albums, tags, accueil ; le zoom part bien de la vignette
+  (filtre `itemData` → `element`), fondu seulement pour une photo hors de la page.
 
-Suite de tests : 76 tests verts (`docker compose exec php php bin/phpunit`).
+Suite de tests : 78 tests verts (`docker compose exec php php bin/phpunit`).
 Traçabilité : `.claude-tasks/` 001 à 030 (opus 001–026, haiku 027–028, sonnet 029–030 ; numérotation globale, prochain **031**) ; journal `documentations-dev/001` à `030` (prochain **031**).
 
 ## Décisions prises avec l'utilisateur
