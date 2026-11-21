@@ -1,0 +1,63 @@
+{% extends '@EasyAdmin/page/content.html.twig' %}
+
+{# Page « Supprimer des médias » d'un album (super-administrateur) : AlbumCrudController::deleteMedia() #}
+
+{% block page_title %}Supprimer des médias de l'album « {{ album.title }} »{% endblock %}
+
+{% block page_actions %}
+    <a class="btn btn-secondary" href="{{ ea_url().setController('App\\Controller\\Admin\\AlbumCrudController').setAction('edit').setEntityId(album.id) }}">
+        <i class="fa fa-arrow-left"></i> Revenir à l'album
+    </a>
+    <a class="btn btn-secondary" href="{{ path('album_show', {slug: album.slug}) }}" target="_blank" rel="noopener">
+        <i class="fa fa-eye"></i> Voir sur le site
+    </a>
+{% endblock %}
+
+{% block main %}
+    <p class="text-muted">
+        Cochez les médias à supprimer. La suppression est <strong>définitive</strong> : le média est retiré de la base,
+        ses fichiers (original et miniatures) sont effacés du disque et ses commentaires sont supprimés.
+    </p>
+
+    {% if medias is empty %}
+        <p>Cet album ne contient aucun média.</p>
+    {% else %}
+        <form method="post" class="album-media-delete" data-album-media-delete
+              data-confirm="Supprimer définitivement %count% média(s), leurs fichiers et leurs commentaires ?">
+            <input type="hidden" name="_token" value="{{ csrf_token('delete-album-media-' ~ album.id) }}">
+
+            <div class="album-media-delete-toolbar">
+                <label class="form-check">
+                    <input type="checkbox" class="form-check-input" data-select-all>
+                    <span class="form-check-label">Tout cocher ({{ medias|length }})</span>
+                </label>
+                <button type="submit" class="btn btn-danger" data-submit>
+                    <i class="fa fa-trash"></i> Supprimer la sélection (<span data-count>0</span>)
+                </button>
+            </div>
+
+            <ul class="album-media-delete-grid">
+                {% for media in medias %}
+                    {% set comments = comment_counts[media.id] ?? 0 %}
+                    <li>
+                        <label>
+                            <input type="checkbox" class="form-check-input" name="media[]" value="{{ media.id }}">
+                            {% if media.type.hasThumbnail %}
+                                <img src="{{ path('media_thumb', {id: media.id, size: 'small'}) }}" alt="" loading="lazy">
+                            {% else %}
+                                <span class="album-media-delete-icon"><i class="fa fa-music fa-2x"></i></span>
+                            {% endif %}
+                            <span class="album-media-delete-title">{{ media.displayTitle }}</span>
+                            <span class="album-media-delete-meta">
+                                {{ media.type.label }}
+                                {% if media.takenAt %} · {{ media.takenAt|date('d/m/Y') }}{% endif %}
+                                {% if comments > 0 %} · <i class="fa fa-comment"></i> {{ comments }}{% endif %}
+                                {% if album.coverMedia and album.coverMedia.id == media.id %} · couverture{% endif %}
+                            </span>
+                        </label>
+                    </li>
+                {% endfor %}
+            </ul>
+        </form>
+    {% endif %}
+{% endblock %}

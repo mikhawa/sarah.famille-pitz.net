@@ -23,7 +23,7 @@ Un seul rôle par compte (`User::setLevel()`), hiérarchie `ROLE_SUPER_ADMIN` > 
 |--------------------|------------------------------------|------------------------------------------------------------------------------------------------|
 | `ROLE_USER`        | albums et médias publics           | écrire des petits mots ; envoyer des médias dans les albums publics si un admin l'y autorise (`User::$canUpload`) ; supprimer ses propres envois |
 | `ROLE_ADMIN`       | publics et privés                  | régler Public / Privé ; gérer albums, tags, médias, modération ; gérer les comptes **membres** (droit d'envoi compris) |
-| `ROLE_SUPER_ADMIN` | tout, y compris « Super-admin seul » | « Super-admin seul » ; **verrouiller** la visibilité (prioritaire sur les admins) ; nommer / retirer les admins et super-admins |
+| `ROLE_SUPER_ADMIN` | tout, y compris « Super-admin seul » | « Super-admin seul » ; **verrouiller** la visibilité (prioritaire sur les admins) ; nommer / retirer les admins et super-admins ; supprimer des médias choisis d'un album (base, fichiers, commentaires) : admin → Albums → « Supprimer des médias » (`AlbumVoter::DELETE_MEDIA`) |
 
 Création : `php bin/console app:create-admin <email> "<Nom>" [--super]` (jamais de rétrogradation).
 

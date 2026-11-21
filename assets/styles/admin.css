@@ -112,3 +112,75 @@
     color: var(--sarah-accent);
     font-weight: 800;
 }
+
+/* Page « Supprimer des médias » d'un album (templates/admin/album/delete_media.html.twig) */
+.album-media-delete-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.album-media-delete-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: .75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.album-media-delete-grid label {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    height: 100%;
+    padding: .5rem;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: var(--white, #fff);
+    cursor: pointer;
+}
+
+.album-media-delete-grid label:has(input:checked) {
+    border-color: var(--bs-danger, #dc3545);
+}
+
+.album-media-delete-grid input {
+    position: absolute;
+    top: .75rem;
+    left: .75rem;
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.album-media-delete-grid img,
+.album-media-delete-icon {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.album-media-delete-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eee;
+    color: #888;
+}
+
+.album-media-delete-title {
+    overflow: hidden;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.album-media-delete-meta {
+    color: #6c757d;
+    font-size: .85em;
+}

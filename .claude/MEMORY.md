@@ -77,8 +77,13 @@ puis rendre publics les albums à partager (la migration a tout passé en privé
 - Vérifié dans le navigateur par l'utilisateur (2026-11-21) : albums, tags, accueil ; le zoom part bien de la vignette
   (filtre `itemData` → `element`), fondu seulement pour une photo hors de la page.
 
-Suite de tests : 78 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/` 001 à 030 (opus 001–026, haiku 027–028, sonnet 029–030 ; numérotation globale, prochain **031**) ; journal `documentations-dev/001` à `030` (prochain **031**).
+Suite de tests : 80 tests verts (`docker compose exec php php bin/phpunit`).
+Traçabilité : `.claude-tasks/` 001 à 031 (opus 001–026 et 031, haiku 027–028, sonnet 029–030 ; numérotation globale, prochain **032**) ; journal `documentations-dev/001` à `031` (prochain **032**).
+
+### Suppression de médias depuis un album (2026-11-21, branche `feature/09-mail-to-users-product`, non commitée)
+
+Super-admin seul (`AlbumVoter::DELETE_MEDIA`) : admin → Albums → « Supprimer des médias » → `/admin/album/{id}/medias`,
+médias à cocher ; base + fichiers (`MediaFileCleanupListener`) + commentaires (`ON DELETE CASCADE`). Pas encore essayé dans le navigateur.
 
 ## Décisions prises avec l'utilisateur
 

@@ -23,7 +23,7 @@ Un seul rôle par compte, hiérarchie `ROLE_SUPER_ADMIN` > `ROLE_ADMIN` > `ROLE_
 |--------------------|----------------------------------------|--------------------------------------------------------------------------------------------------------------|
 | `ROLE_USER`        | albums et médias publics               | écrire des petits mots ; supprimer ses propres envois ; envoyer des médias dans les albums publics si un admin l'y autorise (`canUpload`) |
 | `ROLE_ADMIN`       | publics et privés                      | régler Public / Privé ; gérer albums, tags, médias et commentaires ; gérer les comptes **membres**          |
-| `ROLE_SUPER_ADMIN` | tout, y compris « Super-admin seul »   | **verrouiller** la visibilité (les admins ne peuvent plus la changer) ; nommer / retirer les admins          |
+| `ROLE_SUPER_ADMIN` | tout, y compris « Super-admin seul »   | **verrouiller** la visibilité (les admins ne peuvent plus la changer) ; nommer / retirer les admins ; supprimer des médias d'un album (base, fichiers, commentaires) : admin → Albums → « Supprimer des médias » |
 
 Visibilité :
 
