@@ -124,8 +124,11 @@ Le type est détecté sur le **contenu** du fichier, pas sur son extension.
   Pages d'album et de tag (paginées) : la visionneuse parcourt **toutes les photos** de l'album ou du tag (sans vidéos ni
   musique, « N sur 167 »), pas seulement celles de la page. Liste JSON (`data-lightbox-items-value`, fonction Twig
   `lightbox_items`) construite par `MediaRepository::findPhotosByAlbum()` / `findPhotosByTag()`, qui réutilisent les mêmes
-  critères de visibilité et le même ordre que la pagination ; gabarit commun `media/_lightbox_grid.html.twig`. L'accueil
-  et les autres pages gardent la visionneuse limitée aux liens de la page.
+  critères de visibilité et le même ordre que la pagination ; gabarit commun `media/_lightbox_grid.html.twig`. Accueil
+  (fil, parfois des milliers de photos) : la liste n'est pas embarquée, la grille porte `data-lightbox-items-url-value`
+  (route JSON `feed_lightbox`, `/visionneuse/fil?type=…`, `Cache-Control: private, no-store`, `LightboxController`) ; la
+  liste est chargée au premier clic puis gardée en mémoire, et en cas d'échec la fiche de la photo est ouverte. Les
+  données de la visionneuse sont construites par `App\Service\LightboxItems` (Twig et route JSON).
 - Un membre désactivé pendant qu'il est connecté est déconnecté à sa requête suivante (`DeactivatedUserSubscriber`).
 - Dates en français via `twig/intl-extra` (`format_date`) ; filtre Twig `duration` (`App\Twig\AppExtension`).
 - Twig + AssetMapper/ImportMap + Stimulus/Turbo (pas de build Node) ; feuille de style unique `assets/styles/app.css`.

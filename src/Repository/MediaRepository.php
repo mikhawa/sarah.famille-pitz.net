@@ -35,12 +35,23 @@ class MediaRepository extends ServiceEntityRepository
      */
     public function paginateFeed(User $viewer, int $page, ?MediaType $type = null): Page
     {
-        $queryBuilder = $this->createSortedQueryBuilder($viewer, 'DESC');
-        if (null !== $type) {
-            $queryBuilder->andWhere('m.type = :type')->setParameter('type', $type);
+        return Page::fromQueryBuilder($this->createFeedQueryBuilder($viewer, $type), $page, self::PER_PAGE);
+    }
+
+    /**
+     * Toutes les photos du fil (même filtre de type que paginateFeed()), pages confondues : mêmes droits et même ordre.
+     * Chargées à la demande par la visionneuse de l'accueil (voir LightboxController). Vidéo ou musique : aucune photo,
+     * sans requête.
+     *
+     * @return list<Media>
+     */
+    public function findPhotosForFeed(User $viewer, ?MediaType $type = null): array
+    {
+        if (null !== $type && MediaType::Photo !== $type) {
+            return [];
         }
 
-        return Page::fromQueryBuilder($queryBuilder, $page, self::PER_PAGE);
+        return $this->getPhotos($this->createFeedQueryBuilder($viewer, $type));
     }
 
     /**
@@ -154,6 +165,17 @@ class MediaRepository extends ServiceEntityRepository
             ->andWhere(\sprintf('%1$s.visibility IN (:visibilities) OR ('.$inherited.')', $alias))
             // Liste jamais vide pour IN () : un compte désactivé ne voit rien
             ->setParameter('visibilities', Visibility::values($allowed) ?: ['-']);
+    }
+
+    // Médias visibles du fil, du plus récent au plus ancien, éventuellement d'un seul type (base commune page / visionneuse)
+    private function createFeedQueryBuilder(User $viewer, ?MediaType $type): QueryBuilder
+    {
+        $queryBuilder = $this->createSortedQueryBuilder($viewer, 'DESC');
+        if (null !== $type) {
+            $queryBuilder->andWhere('m.type = :type')->setParameter('type', $type);
+        }
+
+        return $queryBuilder;
     }
 
     // Médias visibles d'un album, dans l'ordre où ils ont été pris (base commune de la page et de la visionneuse)

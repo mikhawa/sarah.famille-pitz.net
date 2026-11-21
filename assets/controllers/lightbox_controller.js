@@ -17,6 +17,10 @@ import { generateCsrfHeaders, generateCsrfToken, removeCsrfToken } from './csrf_
  * utilisée que pour l'animation de zoom (fondu si la photo n'est pas sur la page). Sans cette valeur, la visionneuse
  * ne connaît que les liens de la page, comme avant.
  *
+ * Fil de l'accueil (trop de photos pour les embarquer) : data-lightbox-items-url-value donne la route JSON de la même
+ * liste, chargée au premier clic puis gardée en mémoire. Si le chargement échoue (réseau, session expirée) ou si la
+ * photo n'est pas dans la liste, le lien vers la fiche de la photo est suivi.
+ *
  * Petits mots : le bouton 💬 (avec leur nombre) ouvre ou referme un panneau par-dessus la photo. Le fragment HTML vient
  * de data-comments-url (route media_comments, rendu et échappé par Twig) ; il est chargé à chaque photo affichée,
  * gardé en mémoire le temps de la visionneuse. Le choix ouvert / fermé est retenu dans le navigateur.
@@ -41,10 +45,10 @@ function savePanelPreference(open) {
 }
 
 export default class extends Controller {
-    static values = { items: Array };
+    static values = { items: Array, itemsUrl: String };
 
     connect() {
-        const fullList = this.hasItemsValue && this.itemsValue.length > 0;
+        const fullList = (this.hasItemsValue && this.itemsValue.length > 0) || (this.hasItemsUrlValue && this.itemsUrlValue !== '');
 
         this.lightbox = new PhotoSwipeLightbox({
             // Liste complète : les clics sont gérés plus bas (ouverture à l'index global) ; sinon liens de la page
@@ -99,13 +103,43 @@ export default class extends Controller {
     }
 
     /**
-     * Visionneuse sur toute la liste fournie : clic sur une vignette → ouverture à l'index de cette photo dans la liste.
+     * Visionneuse sur toute la liste (fournie dans la page, ou chargée au premier clic depuis itemsUrl) : clic sur une
+     * vignette → ouverture à l'index de cette photo dans la liste.
      * Le clic avec Ctrl, Maj, Alt ou le bouton du milieu garde son effet habituel (ouvrir la fiche dans un onglet).
      */
     setupFullList() {
-        const items = this.itemsValue;
-        const indexById = new Map(items.map((item, index) => [String(item.id), index]));
+        let items = this.hasItemsValue && this.itemsValue.length > 0 ? this.itemsValue : null;
+        let indexById = null;
+        let loading = false;
         const tileOf = (id) => this.element.querySelector(`a[data-lightbox-id="${CSS.escape(String(id))}"]`);
+
+        const setItems = (list) => {
+            items = list;
+            indexById = new Map(list.map((item, index) => [String(item.id), index]));
+        };
+        if (items) {
+            setItems(items);
+        }
+
+        // Liste JSON de la route du fil, ou null (échec, session expirée : redirection vers la connexion)
+        const fetchItems = async () => {
+            try {
+                const response = await fetch(this.itemsUrlValue, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+                if (!response.ok || response.redirected || !(response.headers.get('Content-Type') ?? '').includes('json')) {
+                    return null;
+                }
+                const list = await response.json();
+
+                return Array.isArray(list) ? list : null;
+            } catch {
+                return null;
+            }
+        };
+
+        // Repli : la fiche de la photo, comme sans JavaScript
+        const followLink = (tile) => {
+            window.Turbo ? window.Turbo.visit(tile.href) : window.location.assign(tile.href);
+        };
 
         // Vignette présente sur la page : sert à l'animation de zoom et de retour (sinon : simple fondu)
         this.lightbox.addFilter('itemData', (itemData) => {
@@ -114,19 +148,39 @@ export default class extends Controller {
             return tile ? { ...itemData, element: tile, msrc: tile.querySelector('img')?.currentSrc || undefined } : itemData;
         });
 
-        this.onTileClick = (event) => {
+        this.onTileClick = async (event) => {
             if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || window.pswp) {
                 return;
             }
             const tile = event.target.closest('a[data-lightbox-id]');
-            const index = tile ? indexById.get(tile.dataset.lightboxId) : undefined;
-            if (index === undefined || !this.element.contains(tile)) {
-                // Photo absente de la liste : le lien vers la fiche est suivi normalement
+            if (!tile || !this.element.contains(tile)) {
                 return;
             }
             event.preventDefault();
             const point = event.clientX || event.clientY ? { x: event.clientX, y: event.clientY } : null;
-            this.lightbox.loadAndOpen(index, items, point);
+
+            if (!items) {
+                // Premier clic : liste à charger ; les clics suivants pendant le chargement sont ignorés
+                if (loading) {
+                    return;
+                }
+                loading = true;
+                const list = await fetchItems();
+                loading = false;
+                if (!list) {
+                    followLink(tile);
+                    return;
+                }
+                setItems(list);
+            }
+
+            const index = indexById.get(tile.dataset.lightboxId);
+            if (index === undefined) {
+                // Photo absente de la liste : le lien vers la fiche est suivi
+                followLink(tile);
+                return;
+            }
+            this.lightbox?.loadAndOpen(index, items, point);
         };
         this.element.addEventListener('click', this.onTileClick);
     }

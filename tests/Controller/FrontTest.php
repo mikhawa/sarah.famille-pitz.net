@@ -288,6 +288,52 @@ class FrontTest extends WebTestCase
         self::assertEmpty(array_diff($tileIds, array_column($items, 'id')));
     }
 
+    public function testFeedLightboxRouteReturnsEveryVisiblePhoto(): void
+    {
+        $this->fillSourceForLightbox(null, null);
+        $this->loginMember();
+
+        $crawler = $this->client->request('GET', '/');
+        // La page n'embarque pas la liste : seulement l'URL de chargement à la demande
+        self::assertSame('/visionneuse/fil', $crawler->filter('[data-controller="lightbox"]')->attr('data-lightbox-items-url-value'));
+        self::assertNull($crawler->filter('[data-controller="lightbox"]')->attr('data-lightbox-items-value'));
+        $crawler = $this->client->request('GET', '/?type=photo');
+        self::assertSame('/visionneuse/fil?type=photo', $crawler->filter('[data-controller="lightbox"]')->attr('data-lightbox-items-url-value'));
+
+        $this->client->request('GET', '/visionneuse/fil');
+        self::assertResponseIsSuccessful();
+        self::assertResponseHeaderSame('Content-Type', 'application/json');
+        self::assertStringContainsString('no-store', (string) $this->client->getResponse()->headers->get('Cache-Control'));
+        $items = json_decode((string) $this->client->getResponse()->getContent(), true, flags: \JSON_THROW_ON_ERROR);
+        $alts = array_column($items, 'alt');
+
+        // Au-delà d'une page, sans vidéo, sans média réservé au super-admin, sans photo sans dimensions
+        self::assertCount(MediaRepository::PER_PAGE + 3, $items);
+        self::assertNotContains('Vidéo', $alts);
+        self::assertNotContains('Secrète', $alts);
+        self::assertNotContains('Sans dimensions', $alts);
+        // Ordre du fil : du plus récent au plus ancien
+        self::assertSame('Photo '.(MediaRepository::PER_PAGE + 2), $alts[0]);
+        self::assertSame('Photo 0', end($alts));
+        self::assertSame(['id', 'src', 'width', 'height', 'href', 'commentsUrl', 'alt'], array_keys($items[0]));
+
+        // Filtre de type : photos identiques ; vidéo ou musique : aucune photo
+        $this->client->request('GET', '/visionneuse/fil?type=photo');
+        self::assertCount(MediaRepository::PER_PAGE + 3, json_decode((string) $this->client->getResponse()->getContent(), true));
+        foreach (['video', 'audio'] as $type) {
+            $this->client->request('GET', '/visionneuse/fil?type='.$type);
+            self::assertResponseIsSuccessful();
+            self::assertSame([], json_decode((string) $this->client->getResponse()->getContent(), true));
+        }
+    }
+
+    public function testFeedLightboxRouteRequiresLogin(): void
+    {
+        $this->client->request('GET', '/visionneuse/fil');
+
+        self::assertResponseRedirects('/login');
+    }
+
     public function testMediaNavigationFollowsTheListOrder(): void
     {
         $album = $this->createAlbum('Noël', 'noel');
