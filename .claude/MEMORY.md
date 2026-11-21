@@ -1,6 +1,6 @@
 # Mémoire du projet — état d'avancement
 
-Dernière mise à jour : 2026-11-21 — branche `feature/08-retouches` (partie de `main` après la PR #10, rien de nouveau encore)
+Dernière mise à jour : 2026-11-21 — branche `feature/08-retouches` (pagination passée à 48/page, non commité)
 
 ## Où on en est
 
@@ -10,7 +10,7 @@ Plan en 6 étapes (détail : `docs/architecture/overview.md`, section « Plan de
 2. ✅ Administration EasyAdmin 5.8 — comptes (invitation par e-mail via reset-password-bundle), albums, tags
 3. ✅ Médias — envoi groupé privé, nettoyage EXIF/GPS (photos GD, vidéos ffmpeg), miniatures, `MediaFileController` + `MediaVoter`
 4. ✅ Front — fil chronologique par mois (filtre par type), albums + thèmes, pages tag, fiche média (lecteurs,
-   précédent/suivant, clavier/glissement), pagination 24/page ; déconnexion des comptes désactivés
+   précédent/suivant, clavier/glissement), pagination 48/page ; déconnexion des comptes désactivés
 5. ✅ Commentaires — entité `Comment`, ajout par les membres, `CommentVoter`, modération (`is_hidden`) dans l'admin — « petits mots » sous chaque média, suppression par l'auteur, interrupteur « Masqué » dans `/admin/comment`
 6. ✅ Prod (préparée, **pas encore déployée**) — `X-Accel-Redirect` (`MEDIA_X_ACCEL_PREFIX`, actif aussi en Docker dev),
    `bin/backup.sh`, configs `docs/devops/prod/`, procédure `docs/devops/vps-preprod.md`, logs prod en fichiers tournants
@@ -64,7 +64,7 @@ puis rendre publics les albums à partager (la migration a tout passé en privé
 `sarah-crud` → bien sur Haiku, outils OK). Un sous-agent ne connaît pas son propre nom : c'est normal.
 
 Suite de tests : 74 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/opus/001` à `026` (prochain **027**) ; journal `documentations-dev/001` à `026` (prochain **027**).
+Traçabilité : `.claude-tasks/` 001 à 027 (opus 001–026, haiku 027 ; numérotation globale, prochain **028**) ; journal `documentations-dev/001` à `027` (prochain **028**).
 
 ## Décisions prises avec l'utilisateur
 
