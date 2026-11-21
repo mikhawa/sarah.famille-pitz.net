@@ -18,7 +18,7 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class MediaRepository extends ServiceEntityRepository
 {
-    public const PER_PAGE = 48;
+    public const PER_PAGE = 72;
 
     // Date du fil chronologique : prise de vue, sinon date d'envoi (voir Media::getSortDate())
     private const SORT_DATE = 'COALESCE(m.takenAt, m.createdAt)';

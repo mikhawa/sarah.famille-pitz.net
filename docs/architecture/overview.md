@@ -113,7 +113,7 @@ Le type est détecté sur le **contenu** du fichier, pas sur son extension.
 | `media_show`   | `/media/{id}`     | Lecteur `<img>`, `<video>` ou `<audio>`, infos, tags, téléchargement        |
 
 - Date du fil : `Media::getSortDate()` = date de prise de vue, sinon date d'envoi (`COALESCE` dans `MediaRepository`).
-- Pagination : 48 médias par page (`App\Pagination\Page`, `?page=N`, 404 au-delà de la dernière page).
+- Pagination : 72 médias par page (`App\Pagination\Page`, `?page=N`, 404 au-delà de la dernière page).
 - Fiche média : précédent/suivant dans l'album du média (ordre de l'album), sinon dans le fil ;
   flèches du clavier et glissement du doigt (contrôleur Stimulus `media-nav`).
 - Album sans couverture choisie : première photo ou vidéo de l'album.
