@@ -1,6 +1,6 @@
 # Mémoire du projet — état d'avancement
 
-Dernière mise à jour : 2026-10-28 — branche `feature/04-design-admin`
+Dernière mise à jour : 2026-11-21 — branche `feature/08-retouches` (partie de `main` après la PR #10, rien de nouveau encore)
 
 ## Où on en est
 
@@ -53,12 +53,22 @@ secret GitHub `DEPLOY_USER`, racine web `<home>/app/public` (vHost Conf), `publi
 déploiement jamais lancé), design adapté
 à Sarah (6 ans).
 
+### Rôles et visibilité (PR #10, fusionnée dans `main`)
+
+Voir « Décisions » ci-dessous. En prod, après déploiement : `app:create-admin <email> --super` (utilisateur du site),
+puis rendre publics les albums à partager (la migration a tout passé en privé).
+
+### Agents du projet (`.claude/agents/`, vérifiés le 2026-11-21)
+
+`sarah-architecte` (Opus), `sarah-dev` (Sonnet), `sarah-crud` (Haiku) : chargés et fonctionnels (essai réel de
+`sarah-crud` → bien sur Haiku, outils OK). Un sous-agent ne connaît pas son propre nom : c'est normal.
+
 Suite de tests : 74 tests verts (`docker compose exec php php bin/phpunit`).
 Traçabilité : `.claude-tasks/opus/001` à `026` (prochain **027**) ; journal `documentations-dev/001` à `026` (prochain **027**).
 
 ## Décisions prises avec l'utilisateur
 
-- **Rôles et visibilité (2026-11-13, branche `feature/06-messages-on-front`, non commité)** : `ROLE_USER` < `ROLE_ADMIN`
+- **Rôles et visibilité (2026-11-13, fusionné par la PR #10)** : `ROLE_USER` < `ROLE_ADMIN`
   < `ROLE_SUPER_ADMIN` ; albums/médias Public / Privé / Super-admin seul + verrou du super-admin ; **tout l'existant
   privé** après migration ; envoi des membres autorisés (`canUpload`) dans les albums publics, visible tout de suite ;
   admins gèrent les membres, super-admin gère tout. Détail : `docs/architecture/overview.md` (« Rôles »).
