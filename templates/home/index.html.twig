@@ -20,8 +20,8 @@
             {% set months = months|merge({(key): (months[key] ?? [])|merge([media])}) %}
         {% endfor %}
 
-        {# Une seule visionneuse pour toute la page : on glisse d'un mois à l'autre #}
-        <div data-controller="lightbox">
+        {# Une seule visionneuse pour tout le fil : liste des photos chargée au premier clic (route feed_lightbox) #}
+        <div data-controller="lightbox" data-lightbox-items-url-value="{{ path('feed_lightbox', current_type ? {type: current_type.value} : {}) }}">
         {% for medias_of_month in months %}
             <section class="month">
                 <h2>{{ (medias_of_month|first).sortDate|format_date(pattern: 'MMMM y')|capitalize }}</h2>

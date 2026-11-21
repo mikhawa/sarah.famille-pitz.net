@@ -1,6 +1,6 @@
 # Mémoire du projet — état d'avancement
 
-Dernière mise à jour : 2026-10-28 — branche `feature/04-design-admin`
+Dernière mise à jour : 2026-11-21 — branche `feature/08-retouches` (pagination 72/page commitée en 6f2296c ; non commité : correction du test de pagination + fiches 028, visionneuse sur tout l'album/tag + fiches 029 ; en cours : visionneuse de l'accueil, fiches 030)
 
 ## Où on en est
 
@@ -10,7 +10,7 @@ Plan en 6 étapes (détail : `docs/architecture/overview.md`, section « Plan de
 2. ✅ Administration EasyAdmin 5.8 — comptes (invitation par e-mail via reset-password-bundle), albums, tags
 3. ✅ Médias — envoi groupé privé, nettoyage EXIF/GPS (photos GD, vidéos ffmpeg), miniatures, `MediaFileController` + `MediaVoter`
 4. ✅ Front — fil chronologique par mois (filtre par type), albums + thèmes, pages tag, fiche média (lecteurs,
-   précédent/suivant, clavier/glissement), pagination 24/page ; déconnexion des comptes désactivés
+   précédent/suivant, clavier/glissement), pagination 72/page ; déconnexion des comptes désactivés
 5. ✅ Commentaires — entité `Comment`, ajout par les membres, `CommentVoter`, modération (`is_hidden`) dans l'admin — « petits mots » sous chaque média, suppression par l'auteur, interrupteur « Masqué » dans `/admin/comment`
 6. ✅ Prod (préparée, **pas encore déployée**) — `X-Accel-Redirect` (`MEDIA_X_ACCEL_PREFIX`, actif aussi en Docker dev),
    `bin/backup.sh`, configs `docs/devops/prod/`, procédure `docs/devops/vps-preprod.md`, logs prod en fichiers tournants
@@ -53,12 +53,34 @@ secret GitHub `DEPLOY_USER`, racine web `<home>/app/public` (vHost Conf), `publi
 déploiement jamais lancé), design adapté
 à Sarah (6 ans).
 
-Suite de tests : 74 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/opus/001` à `026` (prochain **027**) ; journal `documentations-dev/001` à `026` (prochain **027**).
+### Rôles et visibilité (PR #10, fusionnée dans `main`)
+
+Voir « Décisions » ci-dessous. En prod, après déploiement : `app:create-admin <email> --super` (utilisateur du site),
+puis rendre publics les albums à partager (la migration a tout passé en privé).
+
+### Agents du projet (`.claude/agents/`, vérifiés le 2026-11-21)
+
+`sarah-architecte` (Opus), `sarah-dev` (Sonnet), `sarah-crud` (Haiku) : chargés et fonctionnels (essai réel de
+`sarah-crud` → bien sur Haiku, outils OK). Un sous-agent ne connaît pas son propre nom : c'est normal.
+
+### Visionneuse sur toute la liste (2026-11-21, `feature/08-retouches`)
+
+- Albums et tags : la visionneuse (PhotoSwipe, `lightbox_controller.js`) parcourt **toutes les photos** (pas les vidéos/audio),
+  pas seulement la page. `MediaRepository::findPhotosByAlbum/Tag()` partent du **même QueryBuilder** que la pagination
+  (`createAlbumQueryBuilder` / `createTagQueryBuilder`) → mêmes droits et même ordre : ne jamais dupliquer ces critères.
+  Liste JSON dans `data-lightbox-items-value` (gabarit `media/_lightbox_grid.html.twig`, fonctions Twig `lightbox_items()`
+  et `lightbox_image()`), ouverture à l'index global par `loadAndOpen` ; ℹ️ et 💬 lisent `href`/`commentsUrl` dans les
+  données de la diapo (filtre `domItemData` pour le mode sans liste : fiche média).
+- Accueil (en cours) : **chargement à la demande** de la liste (route JSON) au premier clic, car le fil peut contenir des
+  milliers de photos — pas de JSON dans la page.
+- Non vérifié dans un navigateur : animation de zoom depuis la vignette (filtre `itemData` → `element`), sinon fondu.
+
+Suite de tests : 76 tests verts (`docker compose exec php php bin/phpunit`).
+Traçabilité : `.claude-tasks/` 001 à 030 (opus 001–026, haiku 027–028, sonnet 029–030 ; numérotation globale, prochain **031**) ; journal `documentations-dev/001` à `030` (prochain **031**).
 
 ## Décisions prises avec l'utilisateur
 
-- **Rôles et visibilité (2026-11-13, branche `feature/06-messages-on-front`, non commité)** : `ROLE_USER` < `ROLE_ADMIN`
+- **Rôles et visibilité (2026-11-13, fusionné par la PR #10)** : `ROLE_USER` < `ROLE_ADMIN`
   < `ROLE_SUPER_ADMIN` ; albums/médias Public / Privé / Super-admin seul + verrou du super-admin ; **tout l'existant
   privé** après migration ; envoi des membres autorisés (`canUpload`) dans les albums publics, visible tout de suite ;
   admins gèrent les membres, super-admin gère tout. Détail : `docs/architecture/overview.md` (« Rôles »).
@@ -117,3 +139,6 @@ Les médias envoyés (`var/storage/media/`) et la base ne sont pas dans git : il
 - Dev : ne jamais laisser `public/assets/` (issu d'`asset-map:compile`) : AssetMapper sert alors ces fichiers figés
   et les modifications de `assets/` (JS, CSS) n'apparaissent plus. `rm -rf public/assets` + `cache:clear`
 - Fins de ligne : l'IDE Windows convertit en CRLF, le dépôt est en LF
+- `FrontTest::testFeedIsPaginated` génère `PER_PAGE + 1` médias horodatés : garder des heures valides
+  (`%02d:%02d` avec `intdiv`/modulo) — `10:%02d` cassait dès PER_PAGE > 59
+- Claude ne crée ni branche ni commit (règle de `CLAUDE.md`) : proposer un message de commit, l'utilisateur commite

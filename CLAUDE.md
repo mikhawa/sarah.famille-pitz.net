@@ -27,6 +27,7 @@ ln -sfn "$(pwd)/.claude/MEMORY.md" ~/.claude/projects/$SLUG/memory/MEMORY.md
 
 ## Règles d'utilisation des modèles Claude
 Voir `.claude/models.md` pour les critères détaillés.
+Tu ne peux ni créer de branches ni de commits !
 
 ### Sélection obligatoire avant chaque tâche
 Évaluer la complexité et choisir le modèle adapté :
@@ -60,7 +61,8 @@ En plus de la fiche `.claude-tasks/`, toute tâche modifiant du code ajoute une 
 - Architecture globale : `docs/architecture/overview.md`
 - Docker dev : `docs/devops/docker-setup.md`
 - Schéma BDD : `docs/architecture/database-schema.md`
-- Déploiement : `docs/devops/vps-preprod.md`
+- Déploiement (VPS réel, AlmaLinux 9 + CyberPanel) : `docs/devops/cyberpanel.md`
+- Déploiement (variante nginx) : `docs/devops/vps-preprod.md`
 
 ## Conventions de code
 - Entités : `src/Entity/` — annotations Doctrine en attributs PHP 8

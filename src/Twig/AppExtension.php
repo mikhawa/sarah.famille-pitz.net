@@ -3,13 +3,17 @@
 namespace App\Twig;
 
 use App\Entity\Media;
-use App\Service\MediaStorage;
+use App\Service\LightboxItems;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
 use Twig\TwigFunction;
 
 class AppExtension extends AbstractExtension
 {
+    public function __construct(private readonly LightboxItems $lightboxItems)
+    {
+    }
+
     public function getFilters(): array
     {
         return [
@@ -21,6 +25,8 @@ class AppExtension extends AbstractExtension
     {
         return [
             new TwigFunction('thumb_size', $this->thumbSize(...)),
+            new TwigFunction('lightbox_image', $this->lightboxImage(...)),
+            new TwigFunction('lightbox_items', $this->lightboxItemsList(...)),
         ];
     }
 
@@ -41,25 +47,21 @@ class AppExtension extends AbstractExtension
             : \sprintf('%d:%02d', $minutes, $seconds % 60);
     }
 
-    /**
-     * Dimensions d'une miniature, calculées comme MediaUploader (réduction en largeur seulement, jamais d'agrandissement).
-     * Nécessaires à la visionneuse PhotoSwipe, qui place l'image avant de l'avoir chargée.
-     *
-     * @return array{width: int, height: int}|null null si les dimensions du média sont inconnues
-     */
     public function thumbSize(Media $media, string $size): ?array
     {
-        $width = $media->getWidth();
-        $height = $media->getHeight();
-        if (null === $width || null === $height || $width < 1) {
-            return null;
-        }
+        return $this->lightboxItems->thumbSize($media, $size);
+    }
 
-        $maxWidth = MediaStorage::THUMB_SIZES[$size] ?? throw new \InvalidArgumentException(\sprintf('Taille de miniature inconnue : "%s".', $size));
-        if ($width <= $maxWidth) {
-            return ['width' => $width, 'height' => $height];
-        }
+    public function lightboxImage(Media $media): ?array
+    {
+        return $this->lightboxItems->lightboxImage($media);
+    }
 
-        return ['width' => $maxWidth, 'height' => (int) round($height * $maxWidth / $width)];
+    /**
+     * @param iterable<Media> $medias
+     */
+    public function lightboxItemsList(iterable $medias): array
+    {
+        return $this->lightboxItems->items($medias);
     }
 }

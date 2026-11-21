@@ -18,7 +18,7 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class MediaRepository extends ServiceEntityRepository
 {
-    public const PER_PAGE = 24;
+    public const PER_PAGE = 72;
 
     // Date du fil chronologique : prise de vue, sinon date d'envoi (voir Media::getSortDate())
     private const SORT_DATE = 'COALESCE(m.takenAt, m.createdAt)';
@@ -35,12 +35,23 @@ class MediaRepository extends ServiceEntityRepository
      */
     public function paginateFeed(User $viewer, int $page, ?MediaType $type = null): Page
     {
-        $queryBuilder = $this->createSortedQueryBuilder($viewer, 'DESC');
-        if (null !== $type) {
-            $queryBuilder->andWhere('m.type = :type')->setParameter('type', $type);
+        return Page::fromQueryBuilder($this->createFeedQueryBuilder($viewer, $type), $page, self::PER_PAGE);
+    }
+
+    /**
+     * Toutes les photos du fil (même filtre de type que paginateFeed()), pages confondues : mêmes droits et même ordre.
+     * Chargées à la demande par la visionneuse de l'accueil (voir LightboxController). Vidéo ou musique : aucune photo,
+     * sans requête.
+     *
+     * @return list<Media>
+     */
+    public function findPhotosForFeed(User $viewer, ?MediaType $type = null): array
+    {
+        if (null !== $type && MediaType::Photo !== $type) {
+            return [];
         }
 
-        return Page::fromQueryBuilder($queryBuilder, $page, self::PER_PAGE);
+        return $this->getPhotos($this->createFeedQueryBuilder($viewer, $type));
     }
 
     /**
@@ -50,11 +61,29 @@ class MediaRepository extends ServiceEntityRepository
      */
     public function paginateByAlbum(User $viewer, Album $album, int $page): Page
     {
-        $queryBuilder = $this->createSortedQueryBuilder($viewer, 'ASC')
-            ->andWhere('m.album = :album')
-            ->setParameter('album', $album);
+        return Page::fromQueryBuilder($this->createAlbumQueryBuilder($viewer, $album), $page, self::PER_PAGE);
+    }
 
-        return Page::fromQueryBuilder($queryBuilder, $page, self::PER_PAGE);
+    /**
+     * Toutes les photos d'un album (sans vidéos ni musique), pages confondues : mêmes droits de visibilité et même
+     * ordre que paginateByAlbum(). Alimente la visionneuse, qui parcourt tout l'album quelle que soit la page.
+     *
+     * @return list<Media>
+     */
+    public function findPhotosByAlbum(User $viewer, Album $album): array
+    {
+        return $this->getPhotos($this->createAlbumQueryBuilder($viewer, $album));
+    }
+
+    /**
+     * Toutes les photos d'un tag (sans vidéos ni musique), pages confondues : mêmes droits et même ordre que
+     * paginateByTag(). Alimente la visionneuse.
+     *
+     * @return list<Media>
+     */
+    public function findPhotosByTag(User $viewer, Tag $tag): array
+    {
+        return $this->getPhotos($this->createTagQueryBuilder($viewer, $tag));
     }
 
     /**
@@ -62,11 +91,7 @@ class MediaRepository extends ServiceEntityRepository
      */
     public function paginateByTag(User $viewer, Tag $tag, int $page): Page
     {
-        $queryBuilder = $this->createSortedQueryBuilder($viewer, 'DESC')
-            ->andWhere(':tag MEMBER OF m.tags')
-            ->setParameter('tag', $tag);
-
-        return Page::fromQueryBuilder($queryBuilder, $page, self::PER_PAGE);
+        return Page::fromQueryBuilder($this->createTagQueryBuilder($viewer, $tag), $page, self::PER_PAGE);
     }
 
     /**
@@ -140,6 +165,47 @@ class MediaRepository extends ServiceEntityRepository
             ->andWhere(\sprintf('%1$s.visibility IN (:visibilities) OR ('.$inherited.')', $alias))
             // Liste jamais vide pour IN () : un compte désactivé ne voit rien
             ->setParameter('visibilities', Visibility::values($allowed) ?: ['-']);
+    }
+
+    // Médias visibles du fil, du plus récent au plus ancien, éventuellement d'un seul type (base commune page / visionneuse)
+    private function createFeedQueryBuilder(User $viewer, ?MediaType $type): QueryBuilder
+    {
+        $queryBuilder = $this->createSortedQueryBuilder($viewer, 'DESC');
+        if (null !== $type) {
+            $queryBuilder->andWhere('m.type = :type')->setParameter('type', $type);
+        }
+
+        return $queryBuilder;
+    }
+
+    // Médias visibles d'un album, dans l'ordre où ils ont été pris (base commune de la page et de la visionneuse)
+    private function createAlbumQueryBuilder(User $viewer, Album $album): QueryBuilder
+    {
+        return $this->createSortedQueryBuilder($viewer, 'ASC')
+            ->andWhere('m.album = :album')
+            ->setParameter('album', $album);
+    }
+
+    // Médias visibles d'un tag, du plus récent au plus ancien (base commune de la page et de la visionneuse)
+    private function createTagQueryBuilder(User $viewer, Tag $tag): QueryBuilder
+    {
+        return $this->createSortedQueryBuilder($viewer, 'DESC')
+            ->andWhere(':tag MEMBER OF m.tags')
+            ->setParameter('tag', $tag);
+    }
+
+    /**
+     * Restreint la requête aux photos et la lit en entier (critères de visibilité et ordre déjà dans la requête)
+     *
+     * @return list<Media>
+     */
+    private function getPhotos(QueryBuilder $queryBuilder): array
+    {
+        return $queryBuilder
+            ->andWhere('m.type = :photo')
+            ->setParameter('photo', MediaType::Photo)
+            ->getQuery()
+            ->getResult();
     }
 
     private function createSortedQueryBuilder(User $viewer, string $direction): QueryBuilder

@@ -113,7 +113,7 @@ Le type est détecté sur le **contenu** du fichier, pas sur son extension.
 | `media_show`   | `/media/{id}`     | Lecteur `<img>`, `<video>` ou `<audio>`, infos, tags, téléchargement        |
 
 - Date du fil : `Media::getSortDate()` = date de prise de vue, sinon date d'envoi (`COALESCE` dans `MediaRepository`).
-- Pagination : 24 médias par page (`App\Pagination\Page`, `?page=N`, 404 au-delà de la dernière page).
+- Pagination : 72 médias par page (`App\Pagination\Page`, `?page=N`, 404 au-delà de la dernière page).
 - Fiche média : précédent/suivant dans l'album du média (ordre de l'album), sinon dans le fil ;
   flèches du clavier et glissement du doigt (contrôleur Stimulus `media-nav`).
 - Album sans couverture choisie : première photo ou vidéo de l'album.
@@ -121,6 +121,14 @@ Le type est détecté sur le **contenu** du fichier, pas sur son extension.
   un clic sur une photo l'ouvre (glisser, zoomer, flèches) avec un bouton 💬 vers la fiche ; sur la fiche, un clic sur la
   photo l'agrandit. Image affichée : grande miniature (1600 px, dimensions via la fonction Twig `thumb_size`), original
   pour les GIF (animation). Sans JavaScript ou sans dimensions connues, les liens restent des liens normaux.
+  Pages d'album et de tag (paginées) : la visionneuse parcourt **toutes les photos** de l'album ou du tag (sans vidéos ni
+  musique, « N sur 167 »), pas seulement celles de la page. Liste JSON (`data-lightbox-items-value`, fonction Twig
+  `lightbox_items`) construite par `MediaRepository::findPhotosByAlbum()` / `findPhotosByTag()`, qui réutilisent les mêmes
+  critères de visibilité et le même ordre que la pagination ; gabarit commun `media/_lightbox_grid.html.twig`. Accueil
+  (fil, parfois des milliers de photos) : la liste n'est pas embarquée, la grille porte `data-lightbox-items-url-value`
+  (route JSON `feed_lightbox`, `/visionneuse/fil?type=…`, `Cache-Control: private, no-store`, `LightboxController`) ; la
+  liste est chargée au premier clic puis gardée en mémoire, et en cas d'échec la fiche de la photo est ouverte. Les
+  données de la visionneuse sont construites par `App\Service\LightboxItems` (Twig et route JSON).
 - Un membre désactivé pendant qu'il est connecté est déconnecté à sa requête suivante (`DeactivatedUserSubscriber`).
 - Dates en français via `twig/intl-extra` (`format_date`) ; filtre Twig `duration` (`App\Twig\AppExtension`).
 - Twig + AssetMapper/ImportMap + Stimulus/Turbo (pas de build Node) ; feuille de style unique `assets/styles/app.css`.
