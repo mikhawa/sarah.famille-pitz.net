@@ -1,6 +1,6 @@
 # Mémoire du projet — état d'avancement
 
-Dernière mise à jour : 2026-11-21 — branche `feature/08-retouches` (pagination passée à 72/page, non commité)
+Dernière mise à jour : 2026-11-21 — branche `feature/08-retouches` (pagination 72/page commitée en 6f2296c ; correction du test de pagination + fiches 028 non commitées)
 
 ## Où on en est
 
@@ -127,3 +127,6 @@ Les médias envoyés (`var/storage/media/`) et la base ne sont pas dans git : il
 - Dev : ne jamais laisser `public/assets/` (issu d'`asset-map:compile`) : AssetMapper sert alors ces fichiers figés
   et les modifications de `assets/` (JS, CSS) n'apparaissent plus. `rm -rf public/assets` + `cache:clear`
 - Fins de ligne : l'IDE Windows convertit en CRLF, le dépôt est en LF
+- `FrontTest::testFeedIsPaginated` génère `PER_PAGE + 1` médias horodatés : garder des heures valides
+  (`%02d:%02d` avec `intdiv`/modulo) — `10:%02d` cassait dès PER_PAGE > 59
+- Claude ne crée ni branche ni commit (règle de `CLAUDE.md`) : proposer un message de commit, l'utilisateur commite

@@ -70,7 +70,7 @@ class FrontTest extends WebTestCase
     public function testFeedIsPaginated(): void
     {
         for ($i = 0; $i < MediaRepository::PER_PAGE + 1; ++$i) {
-            $this->createMedia(MediaType::Photo, 'Photo '.$i, \sprintf('2025-01-01 10:%02d', $i));
+            $this->createMedia(MediaType::Photo, 'Photo '.$i, \sprintf('2025-01-01 %02d:%02d', 10 + intdiv($i, 60), $i % 60));
         }
         $this->loginMember();
 
