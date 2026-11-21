@@ -13,11 +13,7 @@
     {% if medias.items is empty %}
         <p class="empty">Aucun souvenir avec ce thème pour l'instant.</p>
     {% else %}
-        <ul class="grid" data-controller="lightbox">
-            {% for media in medias.items %}
-                {{ include('media/_tile.html.twig') }}
-            {% endfor %}
-        </ul>
+        {{ include('media/_lightbox_grid.html.twig') }}
         {{ include('_pagination.html.twig', {route: 'tag_show', params: {slug: tag.slug}}) }}
     {% endif %}
 {% endblock %}

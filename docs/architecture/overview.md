@@ -121,6 +121,11 @@ Le type est détecté sur le **contenu** du fichier, pas sur son extension.
   un clic sur une photo l'ouvre (glisser, zoomer, flèches) avec un bouton 💬 vers la fiche ; sur la fiche, un clic sur la
   photo l'agrandit. Image affichée : grande miniature (1600 px, dimensions via la fonction Twig `thumb_size`), original
   pour les GIF (animation). Sans JavaScript ou sans dimensions connues, les liens restent des liens normaux.
+  Pages d'album et de tag (paginées) : la visionneuse parcourt **toutes les photos** de l'album ou du tag (sans vidéos ni
+  musique, « N sur 167 »), pas seulement celles de la page. Liste JSON (`data-lightbox-items-value`, fonction Twig
+  `lightbox_items`) construite par `MediaRepository::findPhotosByAlbum()` / `findPhotosByTag()`, qui réutilisent les mêmes
+  critères de visibilité et le même ordre que la pagination ; gabarit commun `media/_lightbox_grid.html.twig`. L'accueil
+  et les autres pages gardent la visionneuse limitée aux liens de la page.
 - Un membre désactivé pendant qu'il est connecté est déconnecté à sa requête suivante (`DeactivatedUserSubscriber`).
 - Dates en français via `twig/intl-extra` (`format_date`) ; filtre Twig `duration` (`App\Twig\AppExtension`).
 - Twig + AssetMapper/ImportMap + Stimulus/Turbo (pas de build Node) ; feuille de style unique `assets/styles/app.css`.

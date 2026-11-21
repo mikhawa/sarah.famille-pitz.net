@@ -64,7 +64,7 @@ puis rendre publics les albums à partager (la migration a tout passé en privé
 `sarah-crud` → bien sur Haiku, outils OK). Un sous-agent ne connaît pas son propre nom : c'est normal.
 
 Suite de tests : 74 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/` 001 à 028 (opus 001–026, haiku 027–028 ; numérotation globale, prochain **029**) ; journal `documentations-dev/001` à `028` (prochain **029**).
+Traçabilité : `.claude-tasks/` 001 à 029 (opus 001–026, haiku 027–028, sonnet 029 ; numérotation globale, prochain **030**) ; journal `documentations-dev/001` à `029` (prochain **030**).
 
 ## Décisions prises avec l'utilisateur
 

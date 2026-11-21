@@ -219,6 +219,75 @@ class FrontTest extends WebTestCase
         self::assertSame('/media/'.$large->getId().'/thumb/large', $photo->attr('data-pswp-src'));
     }
 
+    public function testAlbumLightboxCoversEveryPhotoOfTheAlbum(): void
+    {
+        $album = $this->createAlbum('Licornes', 'licornes');
+        $this->fillSourceForLightbox($album, null);
+        $crawler = $this->openLightboxPage('/albums/licornes');
+
+        $this->assertLightboxCoversEveryPhoto($crawler, 'Photo');
+    }
+
+    public function testTagLightboxCoversEveryPhotoOfTheTag(): void
+    {
+        $tag = (new Tag())->setName('Fées')->setSlug('fees');
+        $this->entityManager->persist($tag);
+        $this->fillSourceForLightbox(null, $tag);
+        $crawler = $this->openLightboxPage('/tags/fees');
+
+        $this->assertLightboxCoversEveryPhoto($crawler, 'Photo');
+    }
+
+    /**
+     * PER_PAGE + 3 photos (une seule sur la page 2), une vidéo, une photo réservée au super-admin et une photo
+     * sans dimensions : la liste de la visionneuse ne garde que les photos visibles et utilisables
+     */
+    private function fillSourceForLightbox(?Album $album, ?Tag $tag): void
+    {
+        $tags = null !== $tag ? [$tag] : [];
+        $total = MediaRepository::PER_PAGE + 3;
+        for ($i = 0; $i < $total; ++$i) {
+            $takenAt = \sprintf('2025-01-01 %02d:%02d', 10 + intdiv($i, 60), $i % 60);
+            $this->createMedia(MediaType::Photo, 'Photo '.$i, $takenAt, $album, $tags)->setDimensions(800, 600);
+        }
+        $this->createMedia(MediaType::Video, 'Vidéo', '2025-01-01 09:00', $album, $tags, mimeType: 'video/mp4')->setDimensions(1920, 1080);
+        $this->createMedia(MediaType::Photo, 'Secrète', '2025-01-01 09:01', $album, $tags)
+            ->setDimensions(800, 600)
+            ->setVisibility(Visibility::SuperAdmin);
+        $this->createMedia(MediaType::Photo, 'Sans dimensions', '2025-01-01 09:02', $album, $tags);
+        $this->entityManager->flush();
+    }
+
+    private function openLightboxPage(string $url): \Symfony\Component\DomCrawler\Crawler
+    {
+        $this->loginMember();
+        $crawler = $this->client->request('GET', $url);
+        self::assertResponseIsSuccessful();
+
+        return $crawler;
+    }
+
+    private function assertLightboxCoversEveryPhoto(\Symfony\Component\DomCrawler\Crawler $crawler, string $prefix): void
+    {
+        // Page 1 : PER_PAGE vignettes, mais la visionneuse reçoit toutes les photos (3 de plus), sans vidéo ni média refusé
+        self::assertGreaterThanOrEqual(MediaRepository::PER_PAGE, $crawler->filter('.grid .tile')->count());
+        $items = json_decode($crawler->filter('[data-controller="lightbox"]')->attr('data-lightbox-items-value'), true, flags: \JSON_THROW_ON_ERROR);
+        $alts = array_column($items, 'alt');
+
+        self::assertCount(MediaRepository::PER_PAGE + 3, $items);
+        self::assertNotContains('Vidéo', $alts);
+        self::assertNotContains('Secrète', $alts);
+        self::assertNotContains('Sans dimensions', $alts);
+        // Même contenu que les pages : photos de plus de PER_PAGE, présentes au-delà de la première page
+        self::assertContains($prefix.' '.(MediaRepository::PER_PAGE + 2), $alts);
+        self::assertStringStartsWith('/media/', $items[0]['href']);
+        self::assertStringEndsWith('/comments', $items[0]['commentsUrl']);
+        self::assertStringEndsWith('/thumb/large', $items[0]['src']);
+        // Chaque vignette de la page est reliée à la liste
+        $tileIds = $crawler->filter('a.tile-photo[data-lightbox-id]')->each(static fn ($a) => (int) $a->attr('data-lightbox-id'));
+        self::assertEmpty(array_diff($tileIds, array_column($items, 'id')));
+    }
+
     public function testMediaNavigationFollowsTheListOrder(): void
     {
         $album = $this->createAlbum('Noël', 'noel');

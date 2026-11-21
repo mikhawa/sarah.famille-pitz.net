@@ -1,0 +1,8 @@
+{# Grille de vignettes avec visionneuse (lightbox_controller.js) qui parcourt toutes les photos de la liste fournie
+   (lightbox_photos : photos de l'album ou du tag, pages confondues), en JSON échappé par Twig.
+   Paramètres : medias (page courante), lightbox_photos #}
+<ul class="grid" data-controller="lightbox" data-lightbox-items-value="{{ lightbox_items(lightbox_photos)|json_encode }}">
+    {% for media in medias.items %}
+        {{ include('media/_tile.html.twig') }}
+    {% endfor %}
+</ul>

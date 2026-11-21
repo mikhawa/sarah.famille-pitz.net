@@ -50,11 +50,29 @@ class MediaRepository extends ServiceEntityRepository
      */
     public function paginateByAlbum(User $viewer, Album $album, int $page): Page
     {
-        $queryBuilder = $this->createSortedQueryBuilder($viewer, 'ASC')
-            ->andWhere('m.album = :album')
-            ->setParameter('album', $album);
+        return Page::fromQueryBuilder($this->createAlbumQueryBuilder($viewer, $album), $page, self::PER_PAGE);
+    }
 
-        return Page::fromQueryBuilder($queryBuilder, $page, self::PER_PAGE);
+    /**
+     * Toutes les photos d'un album (sans vidéos ni musique), pages confondues : mêmes droits de visibilité et même
+     * ordre que paginateByAlbum(). Alimente la visionneuse, qui parcourt tout l'album quelle que soit la page.
+     *
+     * @return list<Media>
+     */
+    public function findPhotosByAlbum(User $viewer, Album $album): array
+    {
+        return $this->getPhotos($this->createAlbumQueryBuilder($viewer, $album));
+    }
+
+    /**
+     * Toutes les photos d'un tag (sans vidéos ni musique), pages confondues : mêmes droits et même ordre que
+     * paginateByTag(). Alimente la visionneuse.
+     *
+     * @return list<Media>
+     */
+    public function findPhotosByTag(User $viewer, Tag $tag): array
+    {
+        return $this->getPhotos($this->createTagQueryBuilder($viewer, $tag));
     }
 
     /**
@@ -62,11 +80,7 @@ class MediaRepository extends ServiceEntityRepository
      */
     public function paginateByTag(User $viewer, Tag $tag, int $page): Page
     {
-        $queryBuilder = $this->createSortedQueryBuilder($viewer, 'DESC')
-            ->andWhere(':tag MEMBER OF m.tags')
-            ->setParameter('tag', $tag);
-
-        return Page::fromQueryBuilder($queryBuilder, $page, self::PER_PAGE);
+        return Page::fromQueryBuilder($this->createTagQueryBuilder($viewer, $tag), $page, self::PER_PAGE);
     }
 
     /**
@@ -140,6 +154,36 @@ class MediaRepository extends ServiceEntityRepository
             ->andWhere(\sprintf('%1$s.visibility IN (:visibilities) OR ('.$inherited.')', $alias))
             // Liste jamais vide pour IN () : un compte désactivé ne voit rien
             ->setParameter('visibilities', Visibility::values($allowed) ?: ['-']);
+    }
+
+    // Médias visibles d'un album, dans l'ordre où ils ont été pris (base commune de la page et de la visionneuse)
+    private function createAlbumQueryBuilder(User $viewer, Album $album): QueryBuilder
+    {
+        return $this->createSortedQueryBuilder($viewer, 'ASC')
+            ->andWhere('m.album = :album')
+            ->setParameter('album', $album);
+    }
+
+    // Médias visibles d'un tag, du plus récent au plus ancien (base commune de la page et de la visionneuse)
+    private function createTagQueryBuilder(User $viewer, Tag $tag): QueryBuilder
+    {
+        return $this->createSortedQueryBuilder($viewer, 'DESC')
+            ->andWhere(':tag MEMBER OF m.tags')
+            ->setParameter('tag', $tag);
+    }
+
+    /**
+     * Restreint la requête aux photos et la lit en entier (critères de visibilité et ordre déjà dans la requête)
+     *
+     * @return list<Media>
+     */
+    private function getPhotos(QueryBuilder $queryBuilder): array
+    {
+        return $queryBuilder
+            ->andWhere('m.type = :photo')
+            ->setParameter('photo', MediaType::Photo)
+            ->getQuery()
+            ->getResult();
     }
 
     private function createSortedQueryBuilder(User $viewer, string $direction): QueryBuilder

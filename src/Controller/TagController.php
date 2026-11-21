@@ -29,6 +29,8 @@ class TagController extends AbstractController
         return $this->render('tag/show.html.twig', [
             'tag' => $tag,
             'medias' => $medias,
+            // Visionneuse : toutes les photos du tag visibles par ce compte, pas seulement celles de la page
+            'lightbox_photos' => $mediaRepository->findPhotosByTag($user, $tag),
         ]);
     }
 }

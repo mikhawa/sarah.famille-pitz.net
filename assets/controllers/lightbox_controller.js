@@ -11,6 +11,12 @@ import { generateCsrfHeaders, generateCsrfToken, removeCsrfToken } from './csrf_
  * devient une photo de la visionneuse ; son href (la fiche du média) reste le lien suivi sans JavaScript.
  * Les autres liens (vidéos, musique) ne sont pas concernés.
  *
+ * Album paginé : si la valeur data-lightbox-items-value (liste JSON de toutes les photos de l'album : id, src, width,
+ * height, href, commentsUrl, alt) est fournie, la visionneuse parcourt cette liste complète, quelle que soit la page.
+ * Un clic sur une vignette (data-lightbox-id) l'ouvre à la place de cette photo dans la liste ; la vignette n'est
+ * utilisée que pour l'animation de zoom (fondu si la photo n'est pas sur la page). Sans cette valeur, la visionneuse
+ * ne connaît que les liens de la page, comme avant.
+ *
  * Petits mots : le bouton 💬 (avec leur nombre) ouvre ou referme un panneau par-dessus la photo. Le fragment HTML vient
  * de data-comments-url (route media_comments, rendu et échappé par Twig) ; il est chargé à chaque photo affichée,
  * gardé en mémoire le temps de la visionneuse. Le choix ouvert / fermé est retenu dans le navigateur.
@@ -35,10 +41,14 @@ function savePanelPreference(open) {
 }
 
 export default class extends Controller {
+    static values = { items: Array };
+
     connect() {
+        const fullList = this.hasItemsValue && this.itemsValue.length > 0;
+
         this.lightbox = new PhotoSwipeLightbox({
-            gallery: this.element,
-            children: 'a[data-pswp-src]',
+            // Liste complète : les clics sont gérés plus bas (ouverture à l'index global) ; sinon liens de la page
+            ...(fullList ? {} : { gallery: this.element, children: 'a[data-pswp-src]' }),
             pswpModule: () => import('photoswipe'),
             bgOpacity: 0.92,
             showHideAnimationType: 'zoom',
@@ -49,6 +59,18 @@ export default class extends Controller {
             errorMsg: 'Cette photo n\'a pas pu être chargée.',
             indexIndicatorSep: ' sur ',
         });
+
+        // Données propres au lien (fiche, petits mots) rattachées à la diapo, comme celles de la liste complète
+        this.lightbox.addFilter('domItemData', (itemData, element, linkEl) => ({
+            ...itemData,
+            href: linkEl?.getAttribute('href') ?? null,
+            commentsUrl: linkEl?.dataset.commentsUrl ?? null,
+            current: linkEl?.dataset.lightboxCurrent !== undefined,
+        }));
+
+        if (fullList) {
+            this.setupFullList();
+        }
 
         this.lightbox.on('uiRegister', () => {
             this.registerComments(this.lightbox.pswp);
@@ -63,9 +85,9 @@ export default class extends Controller {
                 html: '<span class="pswp-media-page" aria-hidden="true">ℹ️</span>',
                 onInit: (element, pswp) => {
                     const update = () => {
-                        const link = pswp.currSlide?.data.element;
-                        element.href = link?.getAttribute('href') ?? '#';
-                        element.hidden = !link || link.dataset.lightboxCurrent !== undefined;
+                        const data = pswp.currSlide?.data;
+                        element.href = data?.href ?? '#';
+                        element.hidden = !data?.href || data.current === true;
                     };
                     pswp.on('change', update);
                     update();
@@ -74,6 +96,39 @@ export default class extends Controller {
         });
 
         this.lightbox.init();
+    }
+
+    /**
+     * Visionneuse sur toute la liste fournie : clic sur une vignette → ouverture à l'index de cette photo dans la liste.
+     * Le clic avec Ctrl, Maj, Alt ou le bouton du milieu garde son effet habituel (ouvrir la fiche dans un onglet).
+     */
+    setupFullList() {
+        const items = this.itemsValue;
+        const indexById = new Map(items.map((item, index) => [String(item.id), index]));
+        const tileOf = (id) => this.element.querySelector(`a[data-lightbox-id="${CSS.escape(String(id))}"]`);
+
+        // Vignette présente sur la page : sert à l'animation de zoom et de retour (sinon : simple fondu)
+        this.lightbox.addFilter('itemData', (itemData) => {
+            const tile = tileOf(itemData.id);
+
+            return tile ? { ...itemData, element: tile, msrc: tile.querySelector('img')?.currentSrc || undefined } : itemData;
+        });
+
+        this.onTileClick = (event) => {
+            if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || window.pswp) {
+                return;
+            }
+            const tile = event.target.closest('a[data-lightbox-id]');
+            const index = tile ? indexById.get(tile.dataset.lightboxId) : undefined;
+            if (index === undefined || !this.element.contains(tile)) {
+                // Photo absente de la liste : le lien vers la fiche est suivi normalement
+                return;
+            }
+            event.preventDefault();
+            const point = event.clientX || event.clientY ? { x: event.clientX, y: event.clientY } : null;
+            this.lightbox.loadAndOpen(index, items, point);
+        };
+        this.element.addEventListener('click', this.onTileClick);
     }
 
     /**
@@ -88,7 +143,7 @@ export default class extends Controller {
         let panel = null;
         let shown = null;
 
-        const currentUrl = () => pswp.currSlide?.data.element?.dataset.commentsUrl ?? null;
+        const currentUrl = () => pswp.currSlide?.data.commentsUrl ?? null;
 
         const message = (text) => {
             const content = document.createDocumentFragment();
@@ -277,6 +332,10 @@ export default class extends Controller {
     }
 
     disconnect() {
+        if (this.onTileClick) {
+            this.element.removeEventListener('click', this.onTileClick);
+            this.onTileClick = null;
+        }
         this.lightbox?.destroy();
         this.lightbox = null;
     }

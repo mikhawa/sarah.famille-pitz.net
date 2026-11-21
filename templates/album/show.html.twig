@@ -31,11 +31,7 @@
     {% if medias.items is empty %}
         <p class="empty">Cet album est encore vide.</p>
     {% else %}
-        <ul class="grid" data-controller="lightbox">
-            {% for media in medias.items %}
-                {{ include('media/_tile.html.twig') }}
-            {% endfor %}
-        </ul>
+        {{ include('media/_lightbox_grid.html.twig') }}
         {{ include('_pagination.html.twig', {route: 'album_show', params: {slug: album.slug}}) }}
     {% endif %}
 {% endblock %}

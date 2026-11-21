@@ -54,6 +54,8 @@ class AlbumController extends AbstractController
         return $this->render('album/show.html.twig', [
             'album' => $album,
             'medias' => $medias,
+            // Visionneuse : toutes les photos de l'album visibles par ce compte, pas seulement celles de la page
+            'lightbox_photos' => $mediaRepository->findPhotosByAlbum($user, $album),
         ]);
     }
 
