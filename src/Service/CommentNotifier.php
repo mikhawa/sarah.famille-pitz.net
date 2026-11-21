@@ -8,6 +8,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Exception\ExceptionInterface as MimeExceptionInterface;
 
 /**
  * Prévient chaque super-administrateur actif par e-mail quand un petit mot est posté (sauf s'il en est l'auteur).
@@ -43,7 +44,8 @@ class CommentNotifier
 
             try {
                 $this->mailer->send($email);
-            } catch (TransportExceptionInterface $e) {
+            } catch (TransportExceptionInterface|MimeExceptionInterface $e) {
+                // Serveur SMTP injoignable, ou adresse invalide (ex. MAILER_FROM mal écrit) : journalisé, la page continue
                 $this->logger->error('E-mail « nouveau petit mot » non envoyé', ['comment' => $comment->getId(), 'user' => $user->getId(), 'exception' => $e]);
             }
         }

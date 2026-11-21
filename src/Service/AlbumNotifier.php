@@ -11,6 +11,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Exception\ExceptionInterface as MimeExceptionInterface;
 
 /**
  * E-mail « nouvel album » à la famille, déclenché par un administrateur (bouton « Prévenir la famille »).
@@ -78,7 +79,8 @@ class AlbumNotifier
             try {
                 $this->mailer->send($email);
                 $result['sent'][] = $user;
-            } catch (TransportExceptionInterface $e) {
+            } catch (TransportExceptionInterface|MimeExceptionInterface $e) {
+                // Serveur SMTP injoignable, ou adresse invalide (ex. MAILER_FROM mal écrit) : journalisé, la page continue
                 $this->logger->error('E-mail « nouvel album » non envoyé', ['album' => $album->getId(), 'user' => $user->getId(), 'exception' => $e]);
                 $result['failed'][] = $user;
             }

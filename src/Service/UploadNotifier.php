@@ -11,6 +11,7 @@ use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Exception\ExceptionInterface as MimeExceptionInterface;
 
 /**
  * Prévient les administrateurs et super-administrateurs actifs par e-mail quand de nouveaux fichiers sont envoyés
@@ -100,7 +101,8 @@ class UploadNotifier
 
             try {
                 $this->mailer->send($email);
-            } catch (TransportExceptionInterface $e) {
+            } catch (TransportExceptionInterface|MimeExceptionInterface $e) {
+                // Serveur SMTP injoignable, ou adresse invalide (ex. MAILER_FROM mal écrit) : journalisé, la page continue
                 $this->logger->error('E-mail « nouveaux fichiers » non envoyé', ['user' => $user->getId(), 'exception' => $e]);
             }
         }

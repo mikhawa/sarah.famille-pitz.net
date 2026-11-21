@@ -133,6 +133,10 @@ Dans `.env.local` :
 - `APP_SECRET` : `php -r 'echo bin2hex(random_bytes(32)), PHP_EOL;'`
 - `MAILER_DSN` : un vrai serveur SMTP. CyberPanel peut créer une boîte mail (*Email → Create Email*) :
   `smtp://noreply%40sarah.famille-pitz.net:<mot de passe>@127.0.0.1:587` (**à vérifier** selon la configuration mail du VPS)
+- `MAILER_FROM` : adresse d'expéditeur avec un **vrai `@`** (`"Site de Sarah <noreply@sarah.famille-pitz.net>"`).
+  Le `%40` ne s'écrit **que** dans l'identifiant de `MAILER_DSN` ; ailleurs, Symfony refuse l'adresse
+  (`RfcComplianceException … does not comply with addr-spec of RFC 2822`) et tout envoi d'e-mail échoue.
+  Après toute modification de `.env.local` : `composer dump-env prod` (le site lit `.env.local.php`) puis `cache:clear`.
 - `MEDIA_X_ACCEL_PREFIX=` **vide** : OpenLiteSpeed ne comprend pas l'en-tête nginx `X-Accel-Redirect`. PHP envoie
   lui-même les fichiers, avance rapide dans les vidéos comprise (testé par la suite de tests).
 

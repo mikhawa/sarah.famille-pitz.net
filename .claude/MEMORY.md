@@ -77,8 +77,8 @@ puis rendre publics les albums à partager (la migration a tout passé en privé
 - Vérifié dans le navigateur par l'utilisateur (2026-11-21) : albums, tags, accueil ; le zoom part bien de la vignette
   (filtre `itemData` → `element`), fondu seulement pour une photo hors de la page.
 
-Suite de tests : 85 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/` 001 à 035 (opus 001–026 et 031–035, haiku 027–028, sonnet 029–030 ; numérotation globale, prochain **036**) ; journal `documentations-dev/001` à `035` (prochain **036**).
+Suite de tests : 86 tests verts (`docker compose exec php php bin/phpunit`).
+Traçabilité : `.claude-tasks/` 001 à 036 (opus 001–026 et 031–036, haiku 027–028, sonnet 029–030 ; numérotation globale, prochain **037**) ; journal `documentations-dev/001` à `036` (prochain **037**).
 
 ### Suppression de médias depuis un album (2026-11-21, branche `feature/09-mail-to-users-product`, non commitée)
 
@@ -92,8 +92,10 @@ public seulement, tous ceux qui voient ≥ 1 média sauf l'expéditeur, `Album::
 nouveaux fichiers → admins + super-admins actifs qui les voient, sauf l'expéditeur (`UploadNotifier`) : **un e-mail par
 envoi**, lots reliés par `upload_id` / `upload_last` (media_upload.js), médias gardés en session jusqu'au dernier lot.
 Choix de l'utilisateur : bouton manuel (pas d'envoi automatique), destinataires = tous ceux qui voient l'album.
-⏳ Erreur 500 en ligne au changement de mot de passe : en attente du log prod (piste : `MAILER_DSN`, l'envoi du
-reset n'attrape pas les erreurs SMTP).
+Erreurs 500 en prod (2026-11-21, envoi de photos et mot de passe oublié) : `RfcComplianceException`
+« admin%40michaeljpitz.com » → `%40` dans une adresse (MAILER_FROM) de `.env.local` du VPS. ✅ Corrigé par l'utilisateur
+(2026-11-21 : `@`, `composer dump-env prod`, `cache:clear`), envoi de photos confirmé. Les notificateurs attrapent aussi
+les erreurs MIME (fiche 036, à déployer). Reste à confirmer : « mot de passe oublié » et réception réelle des e-mails.
 
 ## Décisions prises avec l'utilisateur
 
