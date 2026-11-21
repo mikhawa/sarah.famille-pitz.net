@@ -46,7 +46,7 @@ Les membres sont invités depuis l'administration (`/admin`), qui leur envoie un
 | Création d'un compte actif, ou « Envoyer l'invitation » (admin → Comptes) | le membre (lien pour choisir son mot de passe, 48 h) |
 | « Mot de passe oublié » (`/reset-password`) | le titulaire de l'adresse (rien si compte inconnu / désactivé, ou demande il y a moins d'une heure) |
 | « Prévenir la famille » (admin → Albums), album **public** | chaque compte actif qui voit au moins un média de l'album, sauf l'expéditeur |
-| Nouveau petit mot (fiche du média ou visionneuse) | chaque `ROLE_SUPER_ADMIN` actif, sauf l'auteur |
+| Nouveau petit mot (fiche du média ou visionneuse) | la personne qui a envoyé le média, celles qui y ont déjà écrit un petit mot, et chaque `ROLE_SUPER_ADMIN` — comptes actifs qui voient le média, sauf l'auteur, un seul e-mail chacun |
 | Nouveaux fichiers envoyés (admin ou page d'un album) | chaque `ROLE_ADMIN` et `ROLE_SUPER_ADMIN` actif qui voit au moins un des fichiers, sauf l'expéditeur — **un seul e-mail par envoi**, même découpé en lots |
 
 Un e-mail par personne (les adresses ne sont jamais partagées). Les e-mails « nouvel album », « petit mot » et « nouveaux fichiers » refusés

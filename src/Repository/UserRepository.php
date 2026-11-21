@@ -2,6 +2,8 @@
 
 namespace App\Repository;
 
+use App\Entity\Comment;
+use App\Entity\Media;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -27,6 +29,26 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
     public function findActive(): array
     {
         return $this->findBy(['isActive' => true], ['displayName' => 'ASC']);
+    }
+
+    /**
+     * Comptes actifs ayant déjà écrit un petit mot sur ce média (participants de la conversation)
+     *
+     * @return list<User>
+     */
+    public function findActiveCommentersOf(Media $media): array
+    {
+        $authors = $this->getEntityManager()->createQueryBuilder()
+            ->select('IDENTITY(c.author)')
+            ->from(Comment::class, 'c')
+            ->where('c.media = :media');
+
+        return $this->createQueryBuilder('u')
+            ->where('u.isActive = true')
+            ->andWhere(\sprintf('u.id IN (%s)', $authors->getDQL()))
+            ->setParameter('media', $media)
+            ->getQuery()
+            ->getResult();
     }
 
     /**

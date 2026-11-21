@@ -313,12 +313,62 @@ class CommentTest extends WebTestCase
         self::assertEmailCount(1);
         self::assertEmailHtmlBodyContains(self::getMailerMessage(), 'Trop belle photo !');
 
-        // Le super-administrateur n'est pas prévenu de son propre petit mot
+        // Le super-administrateur n'est pas prévenu de son propre petit mot (Mamy, qui a écrit avant, l'est)
         $this->client->loginUser($tata);
         $crawler = $this->client->request('GET', $this->mediaUrl());
         $this->client->submit($crawler->selectButton('Envoyer')->form(['comment[content]' => 'Merci !']));
         self::assertResponseStatusCodeSame(303);
-        self::assertEmailCount(0);
+        self::assertEmailCount(1);
+        self::assertEmailAddressContains(self::getMailerMessage(), 'To', 'mamy@example.com');
+    }
+
+    public function testMediaOwnerAndConversationParticipantsAreEmailed(): void
+    {
+        $papy = $this->createUser('papy@example.com', 'Papy');
+        $mamy = $this->createUser('mamy@example.com', 'Mamy');
+        $tata = $this->createUser('tata@example.com', 'Tata')->setLevel(User::LEVEL_SUPER_ADMIN);
+        $this->media->setUploadedBy($papy);
+        $this->entityManager->flush();
+
+        // Mamy écrit sur la photo de Papy : Papy (« que tu as partagé ») et le super-administrateur
+        $this->postComment($mamy, 'Trop mignon !');
+        self::assertSame(['papy@example.com', 'tata@example.com'], $this->recipients());
+        self::assertEmailHtmlBodyContains(self::getMailerMessage(0), 'que tu as partagé');
+        self::assertEmailHtmlBodyContains(self::getMailerMessage(1), 'masquer depuis l\'administration');
+
+        // Papy répond : Mamy (participante) et le super-administrateur, pas Papy lui-même
+        $this->postComment($papy, 'Merci Mamy !');
+        self::assertSame(['mamy@example.com', 'tata@example.com'], $this->recipients());
+        self::assertEmailHtmlBodyContains(self::getMailerMessage(0), 'où tu avais écrit un petit mot');
+
+        // Tata répond : Papy une seule fois (propriétaire et participant), Mamy
+        $this->postComment($tata, 'Bravo à tous');
+        self::assertSame(['papy@example.com', 'mamy@example.com'], $this->recipients());
+        self::assertEmailHtmlBodyContains(self::getMailerMessage(0), 'que tu as partagé');
+
+        // Photo devenue privée (Papy, membre, ne la voit plus) et compte de Mamy désactivé : plus d'e-mail pour eux
+        // (entités rechargées : le gestionnaire d'entités est vidé quand le client relance le noyau)
+        $this->entityManager->find(Media::class, $this->media->getId())->setVisibility(Visibility::Private);
+        $this->entityManager->find(User::class, $mamy->getId())->setIsActive(false);
+        $this->entityManager->flush();
+        $this->postComment($tata, 'Photo rangée');
+        self::assertSame([], $this->recipients());
+    }
+
+    private function postComment(User $author, string $content): void
+    {
+        $this->client->loginUser($author);
+        $crawler = $this->client->request('GET', $this->mediaUrl());
+        $this->client->submit($crawler->selectButton('Envoyer')->form(['comment[content]' => $content]));
+        self::assertResponseStatusCodeSame(303);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function recipients(): array
+    {
+        return array_map(static fn ($m) => $m->getTo()[0]->getAddress(), self::getMailerMessages());
     }
 
     private function mediaUrl(): string

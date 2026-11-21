@@ -1,11 +1,22 @@
 {% set media = comment.media %}
+{% set author = comment.author ? comment.author.displayName : 'Quelqu\'un' %}
 <h1>Bonjour {{ user.displayName }} !</h1>
 
-<p>{{ comment.author ? comment.author.displayName : 'Quelqu\'un' }} vient d'écrire un petit mot sur
-« {{ media.displayTitle }} »{% if media.album %}, dans l'album « {{ media.album.title }} »{% endif %} :</p>
+<p>
+    {% if reason == 'owner' %}
+        {{ author }} vient d'écrire un petit mot sur « {{ media.displayTitle }} », que tu as partagé
+    {%- elseif reason == 'participant' %}
+        {{ author }} a répondu sur « {{ media.displayTitle }} », où tu avais écrit un petit mot
+    {%- else %}
+        {{ author }} vient d'écrire un petit mot sur « {{ media.displayTitle }} »
+    {%- endif %}
+    {%- if media.album %}, dans l'album « {{ media.album.title }} »{% endif %} :
+</p>
 
 <blockquote style="margin: 1em 0; padding: .5em 1em; border-left: 4px solid #e53935;">{{ comment.content|nl2br }}</blockquote>
 
-<p><a href="{{ url('media_show', {id: media.id, _fragment: 'comment-' ~ comment.id}) }}">Voir le petit mot</a></p>
+<p><a href="{{ url('media_show', {id: media.id, _fragment: 'comment-' ~ comment.id}) }}">Voir le petit mot et répondre</a></p>
 
-<p>Vous pouvez le masquer depuis l'administration (Commentaires) si besoin.</p>
+{% if reason == 'super_admin' %}
+    <p>Vous pouvez le masquer depuis l'administration (Commentaires) si besoin.</p>
+{% endif %}

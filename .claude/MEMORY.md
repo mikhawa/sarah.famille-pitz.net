@@ -77,8 +77,8 @@ puis rendre publics les albums à partager (la migration a tout passé en privé
 - Vérifié dans le navigateur par l'utilisateur (2026-11-21) : albums, tags, accueil ; le zoom part bien de la vignette
   (filtre `itemData` → `element`), fondu seulement pour une photo hors de la page.
 
-Suite de tests : 86 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/` 001 à 036 (opus 001–026 et 031–036, haiku 027–028, sonnet 029–030 ; numérotation globale, prochain **037**) ; journal `documentations-dev/001` à `036` (prochain **037**).
+Suite de tests : 87 tests verts (`docker compose exec php php bin/phpunit`).
+Traçabilité : `.claude-tasks/` 001 à 037 (opus 001–026 et 031–037, haiku 027–028, sonnet 029–030 ; numérotation globale, prochain **038**) ; journal `documentations-dev/001` à `037` (prochain **038**).
 
 ### Suppression de médias depuis un album (2026-11-21, branche `feature/09-mail-to-users-product`, non commitée)
 
@@ -88,7 +88,8 @@ Vignettes (même branche) : pastille rouge « 💬 N » en haut à droite, fonct
 page, masqués comptés pour les admins seulement).
 E-mails (même branche) : « Prévenir la famille » (admin → Albums, `/admin/album/{id}/prevenir`, `AlbumNotifier`, album
 public seulement, tous ceux qui voient ≥ 1 média sauf l'expéditeur, `Album::notifiedAt`, migration `Version20261121165628`
-à passer en prod) ; nouveau petit mot → e-mail à chaque super-admin actif sauf l'auteur (`CommentNotifier`) ;
+à passer en prod) ; nouveau petit mot → e-mail à l'expéditeur du média, aux participants (déjà écrit sur ce média) et aux super-admins,
+actifs et voyant le média, sauf l'auteur, un seul chacun (`CommentNotifier`, choix « conversation » : pas de bouton Répondre) ;
 nouveaux fichiers → admins + super-admins actifs qui les voient, sauf l'expéditeur (`UploadNotifier`) : **un e-mail par
 envoi**, lots reliés par `upload_id` / `upload_last` (media_upload.js), médias gardés en session jusqu'au dernier lot.
 Choix de l'utilisateur : bouton manuel (pas d'envoi automatique), destinataires = tous ceux qui voient l'album.
