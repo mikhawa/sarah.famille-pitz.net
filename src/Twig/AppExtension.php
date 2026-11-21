@@ -3,15 +3,20 @@
 namespace App\Twig;
 
 use App\Entity\Media;
+use App\Repository\CommentRepository;
 use App\Service\LightboxItems;
+use Symfony\Bundle\SecurityBundle\Security;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
 use Twig\TwigFunction;
 
 class AppExtension extends AbstractExtension
 {
-    public function __construct(private readonly LightboxItems $lightboxItems)
-    {
+    public function __construct(
+        private readonly LightboxItems $lightboxItems,
+        private readonly CommentRepository $commentRepository,
+        private readonly Security $security,
+    ) {
     }
 
     public function getFilters(): array
@@ -27,6 +32,7 @@ class AppExtension extends AbstractExtension
             new TwigFunction('thumb_size', $this->thumbSize(...)),
             new TwigFunction('lightbox_image', $this->lightboxImage(...)),
             new TwigFunction('lightbox_items', $this->lightboxItemsList(...)),
+            new TwigFunction('comment_counts', $this->commentCounts(...)),
         ];
     }
 
@@ -63,5 +69,20 @@ class AppExtension extends AbstractExtension
     public function lightboxItemsList(iterable $medias): array
     {
         return $this->lightboxItems->items($medias);
+    }
+
+    /**
+     * Nombre de petits mots de chaque média d'une liste (pastille des vignettes), en une seule requête.
+     * Mêmes commentaires que la fiche du média : les masqués ne comptent que pour les administrateurs.
+     *
+     * @param iterable<Media> $medias
+     *
+     * @return array<int, int> identifiant du média => nombre (absent si aucun)
+     */
+    public function commentCounts(iterable $medias): array
+    {
+        $medias = \is_array($medias) ? array_values($medias) : iterator_to_array($medias, false);
+
+        return $this->commentRepository->countByMedia($medias, includeHidden: $this->security->isGranted('ROLE_ADMIN'));
     }
 }

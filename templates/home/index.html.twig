@@ -20,6 +20,9 @@
             {% set months = months|merge({(key): (months[key] ?? [])|merge([media])}) %}
         {% endfor %}
 
+        {# Pastille « petits mots » des vignettes : une requête pour toute la page #}
+        {% set comment_counts = comment_counts(medias.items) %}
+
         {# Une seule visionneuse pour tout le fil : liste des photos chargée au premier clic (route feed_lightbox) #}
         <div data-controller="lightbox" data-lightbox-items-url-value="{{ path('feed_lightbox', current_type ? {type: current_type.value} : {}) }}">
         {% for medias_of_month in months %}

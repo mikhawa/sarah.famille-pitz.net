@@ -3,6 +3,7 @@
 namespace App\Tests\Controller;
 
 use App\Entity\Album;
+use App\Entity\Comment;
 use App\Entity\Media;
 use App\Entity\ResetPasswordRequest;
 use App\Entity\Tag;
@@ -242,6 +243,30 @@ class FrontTest extends WebTestCase
      * PER_PAGE + 3 photos (une seule sur la page 2), une vidéo, une photo réservée au super-admin et une photo
      * sans dimensions : la liste de la visionneuse ne garde que les photos visibles et utilisables
      */
+    public function testTilesShowTheNumberOfComments(): void
+    {
+        $album = $this->createAlbum('Été', 'ete');
+        $beach = $this->createMedia(MediaType::Photo, 'Plage', '2025-08-15 10:00', $album);
+        $this->createMedia(MediaType::Photo, 'Château', '2025-08-16 10:00', $album);
+        $author = $this->loginMember();
+        foreach (['Trop beau', 'Bravo', 'Message masqué'] as $i => $content) {
+            $this->entityManager->persist((new Comment($beach, $author))->setContent($content)->setIsHidden(2 === $i));
+        }
+        $this->entityManager->flush();
+
+        // Membre : les commentaires masqués ne comptent pas ; pas de pastille sans commentaire
+        foreach (['/', '/albums/ete'] as $url) {
+            $crawler = $this->client->request('GET', $url);
+            self::assertCount(1, $crawler->filter('.tile-comments'), $url);
+            self::assertSame('2 petits mots', $crawler->filter('.tile[title="Plage"] .tile-comments')->attr('title'), $url);
+        }
+
+        // Administrateur : même total que sur la fiche du média, masqués compris
+        $this->client->loginUser($this->createUser('papa@example.com', admin: true));
+        $crawler = $this->client->request('GET', '/albums/ete');
+        self::assertSame('3 petits mots', $crawler->filter('.tile[title="Plage"] .tile-comments')->attr('title'));
+    }
+
     private function fillSourceForLightbox(?Album $album, ?Tag $tag): void
     {
         $tags = null !== $tag ? [$tag] : [];

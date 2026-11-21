@@ -7,6 +7,13 @@
             <span class="tile-icon" aria-hidden="true">🎵</span>
             <span class="tile-caption">{{ media.displayTitle }}</span>
         {% endif %}
+        {# Nombre de petits mots (comment_counts : fonction Twig appelée une fois par la liste) #}
+        {% set comment_total = (comment_counts ?? {})[media.id] ?? 0 %}
+        {% if comment_total > 0 %}
+            <span class="tile-comments" title="{{ comment_total }} petit{{ comment_total > 1 ? 's' : '' }} mot{{ comment_total > 1 ? 's' : '' }}">
+                <span aria-hidden="true">💬</span> {{ comment_total }}<span class="visually-hidden"> petit{{ comment_total > 1 ? 's' : '' }} mot{{ comment_total > 1 ? 's' : '' }}</span>
+            </span>
+        {% endif %}
         {% if media.type.value == 'video' %}
             <span class="tile-badge"><span aria-hidden="true">▶</span> {{ media.duration|duration ?: 'Vidéo' }}</span>
         {% elseif media.type.value == 'audio' and media.duration %}
