@@ -12,6 +12,34 @@
 
 Depuis les conteneurs, la base est joignable sur `db:3306` et le SMTP sur `mailpit:1025`.
 
+En dev, aucun e-mail ne part vers une vraie boîte : tous les messages (invitations, mot de passe oublié)
+arrivent dans Mailpit, à lire sur http://localhost:8025.
+
+## Rôles
+
+Un seul rôle par compte, hiérarchie `ROLE_SUPER_ADMIN` > `ROLE_ADMIN` > `ROLE_USER` : chaque rôle a aussi les droits du rôle inférieur.
+
+| Rôle               | Voit                                   | Peut aussi                                                                                                   |
+|--------------------|----------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| `ROLE_USER`        | albums et médias publics               | écrire des petits mots ; supprimer ses propres envois ; envoyer des médias dans les albums publics si un admin l'y autorise (`canUpload`) |
+| `ROLE_ADMIN`       | publics et privés                      | régler Public / Privé ; gérer albums, tags, médias et commentaires ; gérer les comptes **membres**          |
+| `ROLE_SUPER_ADMIN` | tout, y compris « Super-admin seul »   | **verrouiller** la visibilité (les admins ne peuvent plus la changer) ; nommer / retirer les admins ; supprimer des médias d'un album (base, fichiers, commentaires) : admin → Albums → « Supprimer des médias » |
+
+Visibilité :
+
+- un album est Public, Privé ou Super-admin seul (**privé par défaut**) ;
+- un média reprend la visibilité de son album, sauf si on lui en donne une autre ;
+- un média public dans un album privé reste caché.
+
+Création d'un compte administrateur :
+
+```bash
+docker compose exec php php bin/console app:create-admin <email> "<Nom>" [--super]
+```
+
+Les membres sont invités depuis l'administration (`/admin`), qui leur envoie un e-mail.
+Détails : [docs/architecture/overview.md](docs/architecture/overview.md), section « Rôles ».
+
 ## Démarrage
 
 ```bash

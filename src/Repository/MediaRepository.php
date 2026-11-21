@@ -65,6 +65,25 @@ class MediaRepository extends ServiceEntityRepository
     }
 
     /**
+     * Tous les médias d'un album (photos, vidéos, musique), pages confondues : mêmes droits et même ordre que
+     * paginateByAlbum(). Page « Supprimer des médias » de l'administration ; $ids restreint à une sélection.
+     *
+     * @param list<int>|null $ids
+     *
+     * @return list<Media>
+     */
+    public function findAllByAlbum(User $viewer, Album $album, ?array $ids = null): array
+    {
+        $queryBuilder = $this->createAlbumQueryBuilder($viewer, $album);
+        if (null !== $ids) {
+            // Liste jamais vide pour IN ()
+            $queryBuilder->andWhere('m.id IN (:ids)')->setParameter('ids', $ids ?: [0]);
+        }
+
+        return $queryBuilder->getQuery()->getResult();
+    }
+
+    /**
      * Toutes les photos d'un album (sans vidéos ni musique), pages confondues : mêmes droits de visibilité et même
      * ordre que paginateByAlbum(). Alimente la visionneuse, qui parcourt tout l'album quelle que soit la page.
      *

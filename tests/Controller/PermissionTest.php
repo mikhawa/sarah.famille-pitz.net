@@ -10,6 +10,7 @@ use App\Entity\Tag;
 use App\Entity\User;
 use App\Enum\MediaType;
 use App\Enum\Visibility;
+use App\Service\MediaStorage;
 use App\Service\MediaUploader;
 use App\Tests\Support\MediaFixtures;
 use Doctrine\ORM\EntityManagerInterface;
@@ -194,6 +195,74 @@ class PermissionTest extends WebTestCase
         $crawler = $this->client->request('GET', '/admin/media/upload?album='.$vault->getId());
         self::assertCount(0, $crawler->filter('select[name="media_upload[album]"] option[selected]'));
         self::assertStringNotContainsString('coffre', $crawler->filter('select[name="media_upload[album]"]')->text());
+    }
+
+    public function testSuperAdminDeletesChosenMediaOfAnAlbumWithFilesAndComments(): void
+    {
+        $album = $this->createAlbum('ete', Visibility::Public);
+        $other = $this->createAlbum('hiver', Visibility::Public);
+        $doomed = $this->storeMedia($this->fixtures->png(40, 30, 'a.png'), $album);
+        $kept = $this->storeMedia($this->fixtures->png(40, 30, 'b.png'), $album);
+        $elsewhere = $this->storeMedia($this->fixtures->png(40, 30, 'c.png'), $other);
+        $album->setCoverMedia($doomed);
+        $comment = (new Comment($doomed, $this->createUser('mamy@example.com')))->setContent('Trop mignon');
+        $this->entityManager->persist($comment);
+        $this->entityManager->flush();
+
+        $storage = static::getContainer()->get(MediaStorage::class);
+        $doomedFiles = [$storage->getOriginalPath($doomed), $storage->getThumbnailPath($doomed, 'small')];
+        foreach ($doomedFiles as $file) {
+            self::assertFileExists($file);
+        }
+        $ids = ['album' => $album->getId(), 'doomed' => $doomed->getId(), 'kept' => $kept->getId(), 'elsewhere' => $elsewhere->getId(), 'comment' => $comment->getId()];
+        $url = '/admin/album/'.$ids['album'].'/medias';
+
+        $this->client->loginUser($this->createUser('papa@example.com', User::LEVEL_SUPER_ADMIN));
+        $crawler = $this->client->request('GET', '/admin/album/'.$ids['album'].'/edit');
+        self::assertCount(1, $crawler->filter('a[href*="/medias"]'));
+        $crawler = $this->client->request('GET', $url);
+        self::assertResponseIsSuccessful();
+        self::assertCount(2, $crawler->filter('input[name="media[]"]'));
+
+        // Un média d'un autre album glissé dans la requête est ignoré
+        $this->client->request('POST', $url, [
+            '_token' => $crawler->filter('input[name="_token"]')->attr('value'),
+            'media' => [$ids['doomed'], $ids['elsewhere']],
+        ]);
+        self::assertResponseRedirects($url, 303);
+
+        $this->entityManager->clear();
+        self::assertNull($this->entityManager->find(Media::class, $ids['doomed']));
+        self::assertNull($this->entityManager->find(Comment::class, $ids['comment']));
+        self::assertNotNull($this->entityManager->find(Media::class, $ids['kept']));
+        self::assertNotNull($this->entityManager->find(Media::class, $ids['elsewhere']));
+        self::assertNull($this->entityManager->find(Album::class, $ids['album'])->getCoverMedia());
+        foreach ($doomedFiles as $file) {
+            self::assertFileDoesNotExist($file);
+        }
+    }
+
+    public function testOnlySuperAdminCanDeleteMediaFromAnAlbum(): void
+    {
+        $album = $this->createAlbum('ete', Visibility::Public);
+        $media = $this->createMedia('Plage', $album);
+        $url = '/admin/album/'.$album->getId().'/medias';
+
+        $this->client->loginUser($this->createUser('papa@example.com', User::LEVEL_ADMIN));
+        $crawler = $this->client->request('GET', '/admin/album/'.$album->getId().'/edit');
+        self::assertCount(0, $crawler->filter('a[href*="/medias"]'));
+        $this->client->request('GET', $url);
+        self::assertResponseStatusCodeSame(403);
+        $this->client->request('POST', $url, ['media' => [$media->getId()]]);
+        self::assertResponseStatusCodeSame(403);
+
+        // Super-administrateur sans jeton CSRF valide : refusé aussi
+        $this->client->loginUser($this->createUser('mamy@example.com', User::LEVEL_SUPER_ADMIN));
+        $this->client->request('POST', $url, ['_token' => 'faux', 'media' => [$media->getId()]]);
+        self::assertResponseStatusCodeSame(403);
+
+        $this->entityManager->clear();
+        self::assertNotNull($this->entityManager->find(Media::class, $media->getId()));
     }
 
     public function testAuthorizedMemberUploadsIntoPublicAlbumsOnly(): void

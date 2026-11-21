@@ -39,6 +39,30 @@ class CommentRepository extends ServiceEntityRepository
         return $queryBuilder->getQuery()->getResult();
     }
 
+    /**
+     * Nombre de commentaires (masqués compris) par média
+     *
+     * @param list<Media> $medias
+     *
+     * @return array<int, int> identifiant du média => nombre (absent si aucun)
+     */
+    public function countByMedia(array $medias): array
+    {
+        if ([] === $medias) {
+            return [];
+        }
+
+        $rows = $this->createQueryBuilder('c')
+            ->select('IDENTITY(c.media) AS mediaId', 'COUNT(c.id) AS total')
+            ->where('c.media IN (:medias)')
+            ->setParameter('medias', $medias)
+            ->groupBy('c.media')
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_column(array_map(static fn (array $row) => [(int) $row['mediaId'], (int) $row['total']], $rows), 1, 0);
+    }
+
     public function countHidden(): int
     {
         return $this->count(['isHidden' => true]);
