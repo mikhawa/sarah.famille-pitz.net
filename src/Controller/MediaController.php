@@ -10,6 +10,7 @@ use App\Repository\CommentRepository;
 use App\Repository\MediaRepository;
 use App\Security\Voter\CommentVoter;
 use App\Security\Voter\MediaVoter;
+use App\Service\CommentNotifier;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
@@ -29,6 +30,7 @@ class MediaController extends AbstractController
         MediaRepository $mediaRepository,
         CommentRepository $commentRepository,
         EntityManagerInterface $entityManager,
+        CommentNotifier $commentNotifier,
     ): Response {
         $user = $this->getUser();
         \assert($user instanceof User);
@@ -43,6 +45,7 @@ class MediaController extends AbstractController
             if ($form->isValid()) {
                 $entityManager->persist($comment);
                 $entityManager->flush();
+                $commentNotifier->notifyNewComment($comment);
 
                 // 303 : Turbo suit la redirection après l'envoi du formulaire
                 return $this->redirect(
@@ -79,6 +82,7 @@ class MediaController extends AbstractController
         Request $request,
         CommentRepository $commentRepository,
         EntityManagerInterface $entityManager,
+        CommentNotifier $commentNotifier,
     ): Response {
         $user = $this->getUser();
         \assert($user instanceof User);
@@ -91,8 +95,10 @@ class MediaController extends AbstractController
             $this->denyAccessUnlessGranted(MediaVoter::COMMENT, $media);
 
             if ($form->isValid()) {
-                $entityManager->persist($form->getData());
+                $comment = $form->getData();
+                $entityManager->persist($comment);
                 $entityManager->flush();
+                $commentNotifier->notifyNewComment($comment);
                 // Formulaire vierge pour le petit mot suivant
                 $form = $this->createLightboxCommentForm($media, $user);
             } else {

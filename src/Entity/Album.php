@@ -52,6 +52,10 @@ class Album
     #[ORM\Column(options: ['default' => false])]
     private bool $visibilityLocked = false;
 
+    // Dernier e-mail « nouvel album » envoyé à la famille (bouton « Prévenir la famille » de l'administration)
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $notifiedAt = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
@@ -125,6 +129,18 @@ class Album
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getNotifiedAt(): ?\DateTimeImmutable
+    {
+        return $this->notifiedAt;
+    }
+
+    public function setNotifiedAt(?\DateTimeImmutable $notifiedAt): static
+    {
+        $this->notifiedAt = $notifiedAt;
+
+        return $this;
     }
 
     public function getVisibility(): Visibility

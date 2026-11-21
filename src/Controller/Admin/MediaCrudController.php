@@ -12,6 +12,7 @@ use App\Repository\MediaRepository;
 use App\Security\Voter\AlbumVoter;
 use App\Security\Voter\MediaVoter;
 use App\Service\MediaImporter;
+use App\Service\UploadNotifier;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminRoute;
@@ -45,6 +46,7 @@ class MediaCrudController extends AbstractCrudController
     public function __construct(
         private readonly MediaImporter $importer,
         private readonly AdminUrlGenerator $adminUrlGenerator,
+        private readonly UploadNotifier $uploadNotifier,
     ) {
     }
 
@@ -170,12 +172,14 @@ class MediaCrudController extends AbstractCrudController
         $isBatch = 'json' === $request->getPreferredFormat();
 
         if ($form->isSubmitted() && $form->isValid()) {
-            ['saved' => $saved, 'errors' => $errors] = $this->importer->import(
+            ['saved' => $saved, 'medias' => $medias, 'errors' => $errors] = $this->importer->import(
                 $form->get('files')->getData(),
                 $user,
                 $form->get('album')->getData(),
                 $form->get('tags')->getData(),
             );
+            // E-mail aux autres administrateurs : un seul par envoi, avec le dernier lot
+            $this->uploadNotifier->afterImport($request, $user, $medias);
 
             if ($isBatch) {
                 return $this->json(['saved' => $saved, 'errors' => $errors]);

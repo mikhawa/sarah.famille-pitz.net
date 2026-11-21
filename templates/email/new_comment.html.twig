@@ -1,0 +1,11 @@
+{% set media = comment.media %}
+<h1>Bonjour {{ user.displayName }} !</h1>
+
+<p>{{ comment.author ? comment.author.displayName : 'Quelqu\'un' }} vient d'écrire un petit mot sur
+« {{ media.displayTitle }} »{% if media.album %}, dans l'album « {{ media.album.title }} »{% endif %} :</p>
+
+<blockquote style="margin: 1em 0; padding: .5em 1em; border-left: 4px solid #e53935;">{{ comment.content|nl2br }}</blockquote>
+
+<p><a href="{{ url('media_show', {id: media.id, _fragment: 'comment-' ~ comment.id}) }}">Voir le petit mot</a></p>
+
+<p>Vous pouvez le masquer depuis l'administration (Commentaires) si besoin.</p>

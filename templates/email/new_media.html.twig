@@ -1,0 +1,19 @@
+<h1>Bonjour {{ user.displayName }} !</h1>
+
+<p>{{ uploader.displayName }} vient d'ajouter {{ total }} {{ total > 1 ? 'nouveaux fichiers' : 'nouveau fichier' }}
+sur le site de Sarah :</p>
+
+<ul>
+    {% for group in groups %}
+        <li>
+            {% if group.album %}
+                {{ group.count }} dans l'album
+                <a href="{{ url('album_show', {slug: group.album.slug}) }}">« {{ group.album.title }} »</a>
+            {% else %}
+                {{ group.count }} sans album, dans le <a href="{{ url('app_home') }}">fil</a>
+            {% endif %}
+        </li>
+    {% endfor %}
+</ul>
+
+<p>Vous pouvez les gérer depuis l'administration : <a href="{{ url('admin') }}">{{ url('admin') }}</a></p>

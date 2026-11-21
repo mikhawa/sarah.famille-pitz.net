@@ -10,6 +10,7 @@ use App\Repository\MediaRepository;
 use App\Repository\TagRepository;
 use App\Security\Voter\AlbumVoter;
 use App\Service\MediaImporter;
+use App\Service\UploadNotifier;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormError;
@@ -71,6 +72,7 @@ class AlbumController extends AbstractController
         #[CurrentUser] User $user,
         Request $request,
         MediaImporter $importer,
+        UploadNotifier $uploadNotifier,
     ): Response {
         $form = $this->createForm(MediaUploadType::class, null, ['viewer' => $user, 'with_classification' => false]);
         $form->handleRequest($request);
@@ -79,7 +81,9 @@ class AlbumController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             // Visibilité « comme l'album » : visibles tout de suite par la famille (album public)
-            ['saved' => $saved, 'errors' => $errors] = $importer->import($form->get('files')->getData(), $user, $album);
+            ['saved' => $saved, 'medias' => $medias, 'errors' => $errors] = $importer->import($form->get('files')->getData(), $user, $album);
+            // E-mail aux administrateurs : un seul par envoi, avec le dernier lot
+            $uploadNotifier->afterImport($request, $user, $medias);
 
             if ($isBatch) {
                 return $this->json(['saved' => $saved, 'errors' => $errors]);

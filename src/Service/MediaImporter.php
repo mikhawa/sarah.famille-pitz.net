@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\Album;
+use App\Entity\Media;
 use App\Entity\Tag;
 use App\Entity\User;
 use App\Exception\UnsupportedMediaException;
@@ -25,11 +26,12 @@ class MediaImporter
      * @param iterable<UploadedFile> $files
      * @param iterable<Tag>          $tags
      *
-     * @return array{saved: int, errors: list<string>} erreurs en texte brut (nom du fichier venu du navigateur : à échapper)
+     * @return array{saved: int, medias: list<Media>, errors: list<string>} erreurs en texte brut (nom du fichier venu du
+     *                                                                         navigateur : à échapper)
      */
     public function import(iterable $files, ?User $uploadedBy, ?Album $album, iterable $tags = []): array
     {
-        $saved = 0;
+        $medias = [];
         $errors = [];
 
         foreach ($files as $file) {
@@ -48,9 +50,9 @@ class MediaImporter
             // Enregistrement fichier par fichier : un échec n'annule pas les envois précédents
             $this->entityManager->persist($media);
             $this->entityManager->flush();
-            ++$saved;
+            $medias[] = $media;
         }
 
-        return ['saved' => $saved, 'errors' => $errors];
+        return ['saved' => \count($medias), 'medias' => $medias, 'errors' => $errors];
     }
 }

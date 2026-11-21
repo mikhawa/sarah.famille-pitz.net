@@ -77,13 +77,20 @@ function showStatus(form, type, message, details = [], link = null) {
     }
 }
 
-async function sendBatch(form, input, batch) {
+// Identifiant commun aux lots d'un même envoi : le serveur n'envoie qu'un e-mail aux administrateurs, avec le dernier lot
+function newUploadId() {
+    return window.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
+async function sendBatch(form, input, batch, uploadId, isLast) {
     // Mêmes champs que le formulaire (album, tags, jeton CSRF), seuls les fichiers changent
     input.disabled = false;
     const body = new FormData(form);
     input.disabled = true;
     body.delete(FILES_FIELD);
     batch.forEach((file) => body.append(FILES_FIELD, file, file.name));
+    body.append('upload_id', uploadId);
+    body.append('upload_last', isLast ? '1' : '0');
 
     let response;
     try {
@@ -119,6 +126,7 @@ async function uploadInBatches(form, input, files) {
     }
 
     const batches = splitIntoBatches(files);
+    const uploadId = newUploadId();
     const errors = [];
     let saved = 0;
     let sent = 0;
@@ -128,7 +136,7 @@ async function uploadInBatches(form, input, files) {
     for (const [index, batch] of batches.entries()) {
         showStatus(form, 'info', `Envoi en cours : lot ${index + 1} sur ${batches.length} (${sent} fichiers envoyés sur ${files.length}). Ne fermez pas la page.`);
 
-        const result = await sendBatch(form, input, batch);
+        const result = await sendBatch(form, input, batch, uploadId, index === batches.length - 1);
         if (result.failure) {
             showStatus(form, 'danger', `Le lot ${index + 1} sur ${batches.length} n'a pas pu être envoyé (${result.failure}). `
                 + `${saved} médias ont été enregistrés avant l'erreur : vérifiez la liste avant de recommencer.`, errors, listLink);

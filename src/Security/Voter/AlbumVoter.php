@@ -22,6 +22,8 @@ class AlbumVoter extends Voter
     public const UPLOAD = 'ALBUM_UPLOAD';
     // Supprimer des médias de l'album (base, fichiers et commentaires) depuis l'administration : super-administrateur
     public const DELETE_MEDIA = 'ALBUM_DELETE_MEDIA';
+    // Envoyer l'e-mail « nouvel album » à la famille : administrateurs (albums qu'ils voient)
+    public const NOTIFY = 'ALBUM_NOTIFY';
 
     protected function supports(string $attribute, mixed $subject): bool
     {
@@ -30,7 +32,7 @@ class AlbumVoter extends Voter
             return true;
         }
 
-        return \in_array($attribute, [self::VIEW, self::UPLOAD, self::DELETE_MEDIA], true) && $subject instanceof Album;
+        return \in_array($attribute, [self::VIEW, self::UPLOAD, self::DELETE_MEDIA, self::NOTIFY], true) && $subject instanceof Album;
     }
 
     protected function voteOnAttribute(string $attribute, mixed $subject, TokenInterface $token, ?Vote $vote = null): bool
@@ -47,6 +49,7 @@ class AlbumVoter extends Voter
             self::VIEW => true,
             self::UPLOAD => $user->isAdmin() || ($user->canUpload() && Visibility::Public === $subject->getVisibility()),
             self::DELETE_MEDIA => $user->isSuperAdmin(),
+            self::NOTIFY => $user->isAdmin(),
         };
     }
 }

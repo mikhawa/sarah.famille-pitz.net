@@ -1,0 +1,22 @@
+<h1>Bonjour {{ user.displayName }} !</h1>
+
+<p>{{ sender.displayName }} vient de partager un nouvel album sur le site de Sarah :</p>
+
+<h2>{{ album.title }}</h2>
+
+{% if album.eventDate %}
+    <p>{{ album.eventDate|format_date('long') }}</p>
+{% endif %}
+
+{% if album.description %}
+    <p>{{ album.description|nl2br }}</p>
+{% endif %}
+
+<p>{{ count }} souvenir{{ count > 1 ? 's' }} {{ count > 1 ? 'vous attendent' : 'vous attend' }} :</p>
+
+<p><a href="{{ url('album_show', {slug: album.slug}) }}">{{ url('album_show', {slug: album.slug}) }}</a></p>
+
+<p>Pour vous connecter, utilisez votre adresse e-mail ({{ user.email }}) et votre mot de passe.
+Mot de passe oublié : <a href="{{ url('app_forgot_password_request') }}">{{ url('app_forgot_password_request') }}</a></p>
+
+<p>À bientôt !</p>

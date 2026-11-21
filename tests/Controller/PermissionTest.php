@@ -242,6 +242,74 @@ class PermissionTest extends WebTestCase
         }
     }
 
+    public function testAdminNotifiesEveryoneWhoCanSeeTheNewAlbum(): void
+    {
+        $album = $this->createAlbum('ete', Visibility::Public);
+        $this->createMedia('Plage', $album);
+        $this->createMedia('Brouillon', $album, Visibility::Private);
+        $papa = $this->createUser('papa@example.com', User::LEVEL_ADMIN);
+        $this->createUser('mamy@example.com');
+        $this->createUser('tata@example.com', User::LEVEL_SUPER_ADMIN);
+        $this->createUser('papy@example.com')->setIsActive(false);
+        $this->entityManager->flush();
+        $url = '/admin/album/'.$album->getId().'/prevenir';
+
+        $this->client->loginUser($papa);
+        $crawler = $this->client->request('GET', '/admin/album/'.$album->getId().'/edit');
+        self::assertCount(1, $crawler->filter('a[href*="/prevenir"]'));
+        $crawler = $this->client->request('GET', $url);
+        self::assertResponseIsSuccessful();
+        // Ni l'expéditeur ni le compte désactivé ; chacun avec le nombre de médias qu'il verra
+        self::assertSame(['mamy — mamy@example.com (1 média visible)', 'tata — tata@example.com (2 médias visibles)'], $crawler->filter('.content-body li')->each(static fn ($li) => $li->text()));
+
+        $this->client->request('POST', $url, ['_token' => $crawler->filter('input[name="_token"]')->attr('value')]);
+        self::assertResponseRedirects($url, 303);
+
+        // Un e-mail par personne : aucune adresse n'est montrée aux autres
+        self::assertEmailCount(2);
+        [$first, $second] = self::getMailerMessages();
+        self::assertSame(['mamy@example.com'], array_map(static fn ($a) => $a->getAddress(), $first->getTo()));
+        self::assertSame(['tata@example.com'], array_map(static fn ($a) => $a->getAddress(), $second->getTo()));
+        self::assertEmailSubjectContains($first, 'Ete');
+        self::assertEmailHtmlBodyContains($first, '/albums/ete');
+        self::assertEmailHtmlBodyContains($first, '1 souvenir vous attend');
+
+        $this->entityManager->clear();
+        self::assertNotNull($this->entityManager->find(Album::class, $album->getId())->getNotifiedAt());
+    }
+
+    public function testPrivateAlbumIsNotAnnouncedAndMembersCannotNotify(): void
+    {
+        $album = $this->createAlbum('secret', Visibility::Private);
+        $this->createMedia('Cadeau', $album);
+        $this->createUser('mamy@example.com');
+        $url = '/admin/album/'.$album->getId().'/prevenir';
+
+        $this->client->loginUser($this->createUser('papa@example.com', User::LEVEL_ADMIN));
+        // Jeton valide récupéré pendant que l'album est public, puis l'album repasse en privé
+        $album->setVisibility(Visibility::Public);
+        $this->entityManager->flush();
+        $token = $this->client->request('GET', $url)->filter('input[name="_token"]')->attr('value');
+        $album->setVisibility(Visibility::Private);
+        $this->entityManager->flush();
+
+        $crawler = $this->client->request('GET', $url);
+        self::assertSelectorTextContains('.alert-warning', 'pas public');
+        self::assertCount(0, $crawler->filter('form[method="post"] button'));
+        // Même en postant directement avec un jeton valide : personne n'est prévenu
+        $this->client->request('POST', $url, ['_token' => $token]);
+        self::assertEmailCount(0);
+        $this->client->request('POST', $url, ['_token' => 'faux']);
+        self::assertResponseStatusCodeSame(403);
+
+        $this->client->loginUser($this->createUser('papy@example.com'));
+        $this->client->request('GET', $url);
+        self::assertResponseStatusCodeSame(403);
+
+        $this->entityManager->clear();
+        self::assertNull($this->entityManager->find(Album::class, $album->getId())->getNotifiedAt());
+    }
+
     public function testOnlySuperAdminCanDeleteMediaFromAnAlbum(): void
     {
         $album = $this->createAlbum('ete', Visibility::Public);
@@ -263,6 +331,43 @@ class PermissionTest extends WebTestCase
 
         $this->entityManager->clear();
         self::assertNotNull($this->entityManager->find(Media::class, $media->getId()));
+    }
+
+    public function testAdminsGetOneEmailPerUploadWithWhatTheyCanSee(): void
+    {
+        $this->createAlbum('ete', Visibility::Public);
+        $vault = $this->createAlbum('coffre', Visibility::SuperAdmin);
+        $mamy = $this->createUser('mamy@example.com')->setCanUpload(true);
+        $this->createUser('papy@example.com');
+        $this->createUser('papa@example.com', User::LEVEL_ADMIN);
+        $tata = $this->createUser('tata@example.com', User::LEVEL_SUPER_ADMIN);
+        $this->createUser('oncle@example.com', User::LEVEL_ADMIN)->setIsActive(false);
+        $this->entityManager->flush();
+
+        // Membre, deux lots du même envoi (comme assets/admin/media_upload.js) : un seul e-mail par admin, au dernier lot
+        $this->client->loginUser($mamy);
+        $token = $this->client->request('GET', '/albums/ete/envoyer')->filter('input[name="media_upload[_token]"]')->attr('value');
+        foreach (['0', '1'] as $i => $last) {
+            $this->client->request('POST', '/albums/ete/envoyer', ['media_upload' => ['_token' => $token], 'upload_id' => 'envoi-de-mamy-1', 'upload_last' => $last], [
+                'media_upload' => ['files' => [new UploadedFile($this->fixtures->png(40, 30, "p$i.png"), "p$i.png", test: true)]],
+            ], ['HTTP_ACCEPT' => 'application/json']);
+            self::assertResponseIsSuccessful();
+            self::assertEmailCount('1' === $last ? 2 : 0);
+        }
+        $recipients = array_map(static fn ($m) => $m->getTo()[0]->getAddress(), self::getMailerMessages());
+        self::assertSame(['papa@example.com', 'tata@example.com'], $recipients);
+        $email = self::getMailerMessage();
+        self::assertEmailSubjectContains($email, 'mamy a ajouté 2 nouveaux fichiers');
+        self::assertEmailHtmlBodyContains($email, '/albums/ete');
+
+        // Super-admin dans un album « Super-admin seul », sans lots : l'admin ne le voit pas, l'auteur n'est pas prévenu
+        $this->client->loginUser($tata);
+        $token = $this->client->request('GET', '/admin/media/upload')->filter('input[name="media_upload[_token]"]')->attr('value');
+        $this->client->request('POST', '/admin/media/upload', ['media_upload' => ['album' => $vault->getId(), '_token' => $token]], [
+            'media_upload' => ['files' => [new UploadedFile($this->fixtures->png(40, 30, 'c.png'), 'c.png', test: true)]],
+        ]);
+        self::assertResponseRedirects();
+        self::assertEmailCount(0);
     }
 
     public function testAuthorizedMemberUploadsIntoPublicAlbumsOnly(): void

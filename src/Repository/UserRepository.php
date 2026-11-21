@@ -20,6 +20,16 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
     }
 
     /**
+     * Comptes actifs, par nom affiché
+     *
+     * @return list<User>
+     */
+    public function findActive(): array
+    {
+        return $this->findBy(['isActive' => true], ['displayName' => 'ASC']);
+    }
+
+    /**
      * Re-hache automatiquement le mot de passe si l'algorithme évolue
      */
     public function upgradePassword(PasswordAuthenticatedUserInterface $user, string $newHashedPassword): void

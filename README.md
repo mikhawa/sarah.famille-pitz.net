@@ -38,6 +38,19 @@ docker compose exec php php bin/console app:create-admin <email> "<Nom>" [--supe
 ```
 
 Les membres sont invités depuis l'administration (`/admin`), qui leur envoie un e-mail.
+
+## E-mails envoyés par le site
+
+| Quand | Destinataires |
+|-------|---------------|
+| Création d'un compte actif, ou « Envoyer l'invitation » (admin → Comptes) | le membre (lien pour choisir son mot de passe, 48 h) |
+| « Mot de passe oublié » (`/reset-password`) | le titulaire de l'adresse (rien si compte inconnu / désactivé, ou demande il y a moins d'une heure) |
+| « Prévenir la famille » (admin → Albums), album **public** | chaque compte actif qui voit au moins un média de l'album, sauf l'expéditeur |
+| Nouveau petit mot (fiche du média ou visionneuse) | chaque `ROLE_SUPER_ADMIN` actif, sauf l'auteur |
+| Nouveaux fichiers envoyés (admin ou page d'un album) | chaque `ROLE_ADMIN` et `ROLE_SUPER_ADMIN` actif qui voit au moins un des fichiers, sauf l'expéditeur — **un seul e-mail par envoi**, même découpé en lots |
+
+Un e-mail par personne (les adresses ne sont jamais partagées). Les e-mails « nouvel album », « petit mot » et « nouveaux fichiers » refusés
+par le serveur SMTP sont notés dans le journal sans faire échouer la page.
 Détails : [docs/architecture/overview.md](docs/architecture/overview.md), section « Rôles ».
 
 ## Démarrage

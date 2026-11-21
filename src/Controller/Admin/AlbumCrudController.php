@@ -4,10 +4,12 @@ namespace App\Controller\Admin;
 
 use App\Entity\Album;
 use App\Enum\MediaType;
+use App\Enum\Visibility;
 use App\Repository\AlbumRepository;
 use App\Repository\CommentRepository;
 use App\Repository\MediaRepository;
 use App\Security\Voter\AlbumVoter;
+use App\Service\AlbumNotifier;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminRoute;
@@ -69,10 +71,59 @@ class AlbumCrudController extends AbstractCrudController
             ->setCssClass('text-danger')
             ->displayIf(fn (Album $album): bool => $this->isGranted(AlbumVoter::DELETE_MEDIA, $album));
 
+        $notify = Action::new('notify', 'Prévenir la famille', 'fa fa-envelope')
+            ->linkToCrudAction('notify')
+            ->displayIf(fn (Album $album): bool => $this->isGranted(AlbumVoter::NOTIFY, $album));
+
         return $actions
+            ->add(Crud::PAGE_INDEX, $notify)
+            ->add(Crud::PAGE_DETAIL, $notify)
+            ->add(Crud::PAGE_EDIT, $notify)
             ->add(Crud::PAGE_INDEX, $deleteMedia)
             ->add(Crud::PAGE_DETAIL, $deleteMedia)
             ->add(Crud::PAGE_EDIT, $deleteMedia);
+    }
+
+    /**
+     * E-mail « nouvel album » : page de confirmation (destinataires, dernier envoi), puis envoi en POST avec jeton CSRF.
+     * Les actions « renderAsForm » d'EasyAdmin n'ont pas de jeton : d'où cette page.
+     */
+    #[AdminRoute(path: '/{entityId}/prevenir', name: 'notify', options: ['methods' => ['GET', 'POST']])]
+    public function notify(AdminContext $context, Request $request, AlbumNotifier $notifier, EntityManagerInterface $entityManager): Response
+    {
+        /** @var Album $album */
+        $album = $context->getEntity()->getInstance();
+        $this->denyAccessUnlessGranted(AlbumVoter::NOTIFY, $album);
+        $sender = $this->getCurrentAdmin();
+
+        if ($request->isMethod('POST')) {
+            if (!$this->isCsrfTokenValid('notify-album-'.$album->getId(), $request->getPayload()->getString('_token'))) {
+                throw $this->createAccessDeniedException('Jeton CSRF invalide.');
+            }
+
+            ['sent' => $sent, 'failed' => $failed] = $notifier->notify($album, $sender);
+            $entityManager->flush();
+
+            $names = static fn (array $users): string => htmlspecialchars(implode(', ', array_map(static fn ($u) => $u->getDisplayName(), $users)));
+            if ([] !== $sent) {
+                // EasyAdmin affiche les messages flash sans échappement : noms échappés
+                $this->addFlash('success', \sprintf('E-mail envoyé à %d personne%s : %s.', \count($sent), \count($sent) > 1 ? 's' : '', $names($sent)));
+            }
+            if ([] !== $failed) {
+                $this->addFlash('danger', \sprintf('Envoi impossible pour : %s (voir le journal du serveur).', $names($failed)));
+            }
+            if ([] === $sent && [] === $failed) {
+                $this->addFlash('warning', 'Personne à prévenir : l\'album doit être public et contenir au moins un média.');
+            }
+
+            return $this->redirect($request->getUri(), Response::HTTP_SEE_OTHER);
+        }
+
+        return $this->render('admin/album/notify.html.twig', [
+            'album' => $album,
+            'recipients' => $notifier->getRecipients($album, $sender),
+            'is_public' => Visibility::Public === $album->getVisibility(),
+        ]);
     }
 
     /**
@@ -153,5 +204,6 @@ class AlbumCrudController extends AbstractCrudController
             ->setHelp('Parmi les photos de cet album. Ajoutez d\'abord des photos dans l\'album.')
             ->onlyWhenUpdating();
         yield DateTimeField::new('createdAt', 'Créé le')->hideOnForm();
+        yield DateTimeField::new('notifiedAt', 'Famille prévenue le')->hideOnForm();
     }
 }

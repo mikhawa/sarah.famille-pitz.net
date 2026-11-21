@@ -1,0 +1,57 @@
+{% extends '@EasyAdmin/page/content.html.twig' %}
+
+{# Page « Prévenir la famille » d'un album : AlbumCrudController::notify() #}
+
+{% block page_title %}Prévenir la famille : « {{ album.title }} »{% endblock %}
+
+{% block page_actions %}
+    <a class="btn btn-secondary" href="{{ ea_url().setController('App\\Controller\\Admin\\AlbumCrudController').setAction('edit').setEntityId(album.id) }}">
+        <i class="fa fa-arrow-left"></i> Revenir à l'album
+    </a>
+    <a class="btn btn-secondary" href="{{ path('album_show', {slug: album.slug}) }}" target="_blank" rel="noopener">
+        <i class="fa fa-eye"></i> Voir sur le site
+    </a>
+{% endblock %}
+
+{% block main %}
+    <p class="text-muted">
+        Un e-mail annonce l'album et donne son lien à chaque personne qui peut le voir (vous exceptée).
+        Chacun reçoit son propre e-mail : les adresses ne sont pas montrées aux autres.
+    </p>
+
+    {% if album.notifiedAt %}
+        <div class="alert alert-info">
+            <i class="fa fa-circle-info"></i>
+            La famille a déjà été prévenue le {{ album.notifiedAt|format_datetime('long', 'short') }}.
+            Un nouvel envoi enverra le même e-mail une seconde fois.
+        </div>
+    {% endif %}
+
+    {% if not is_public %}
+        <div class="alert alert-warning">
+            Cet album n'est pas public : les membres ne le voient pas. Rendez-le public (« Visibilité » dans la
+            modification de l'album) avant de prévenir la famille.
+        </div>
+    {% elseif recipients is empty %}
+        <div class="alert alert-warning">
+            Personne à prévenir : l'album ne contient encore aucun média visible, ou aucun autre compte n'est actif.
+        </div>
+    {% else %}
+        <h2 class="h5">Destinataires ({{ recipients|length }})</h2>
+        <ul>
+            {% for recipient in recipients %}
+                <li>
+                    {{ recipient.user.displayName }} <span class="text-muted">— {{ recipient.user.email }}</span>
+                    <span class="text-muted">({{ recipient.count }} média{{ recipient.count > 1 ? 's' }} visible{{ recipient.count > 1 ? 's' }})</span>
+                </li>
+            {% endfor %}
+        </ul>
+
+        <form method="post">
+            <input type="hidden" name="_token" value="{{ csrf_token('notify-album-' ~ album.id) }}">
+            <button type="submit" class="btn btn-primary">
+                <i class="fa fa-paper-plane"></i> Envoyer l'e-mail à {{ recipients|length }} personne{{ recipients|length > 1 ? 's' }}
+            </button>
+        </form>
+    {% endif %}
+{% endblock %}

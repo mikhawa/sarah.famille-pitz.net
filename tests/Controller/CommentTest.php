@@ -289,6 +289,38 @@ class CommentTest extends WebTestCase
         self::assertSame(0, $this->entityManager->getRepository(Comment::class)->count());
     }
 
+    public function testActiveSuperAdminsAreEmailedForEachNewComment(): void
+    {
+        $tata = $this->createUser('tata@example.com', 'Tata')->setLevel(User::LEVEL_SUPER_ADMIN);
+        $this->createUser('oncle@example.com', 'Oncle')->setLevel(User::LEVEL_SUPER_ADMIN)->setIsActive(false);
+        $this->createUser('papa@example.com', 'Papa', admin: true);
+        $this->entityManager->flush();
+
+        // Depuis la fiche : seul le super-administrateur actif est prévenu (pas l'admin, pas le compte désactivé)
+        $this->client->loginUser($this->createUser('mamy@example.com', 'Mamy'));
+        $crawler = $this->client->request('GET', $this->mediaUrl());
+        $this->client->submit($crawler->selectButton('Envoyer')->form(['comment[content]' => "Coucou <b>Sarah</b>\nBisous"]));
+        self::assertEmailCount(1);
+        $email = self::getMailerMessage();
+        self::assertEmailAddressContains($email, 'To', 'tata@example.com');
+        self::assertEmailSubjectContains($email, 'Nouveau petit mot de Mamy');
+        self::assertEmailHtmlBodyContains($email, 'Coucou &lt;b&gt;Sarah&lt;/b&gt;<br />');
+        self::assertEmailHtmlBodyContains($email, '/media/'.$this->media->getId().'#comment-');
+
+        // Depuis la visionneuse aussi
+        $crawler = $this->client->request('GET', $this->mediaUrl().'/comments');
+        $this->client->submit($crawler->filter('form[name="lightbox_comment"]')->form(), ['lightbox_comment[content]' => 'Trop belle photo !']);
+        self::assertEmailCount(1);
+        self::assertEmailHtmlBodyContains(self::getMailerMessage(), 'Trop belle photo !');
+
+        // Le super-administrateur n'est pas prévenu de son propre petit mot
+        $this->client->loginUser($tata);
+        $crawler = $this->client->request('GET', $this->mediaUrl());
+        $this->client->submit($crawler->selectButton('Envoyer')->form(['comment[content]' => 'Merci !']));
+        self::assertResponseStatusCodeSame(303);
+        self::assertEmailCount(0);
+    }
+
     private function mediaUrl(): string
     {
         return '/media/'.$this->media->getId();
