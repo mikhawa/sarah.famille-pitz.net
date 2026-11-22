@@ -50,11 +50,11 @@ Le VPS est sous **AlmaLinux 9** + **CyberPanel** (OpenLiteSpeed, lsphp83, un uti
   (`cyberpanel.md` corrigé). `/admin` était en 500 (« mkdir … var/cache/prod/asset_mapper :
   Permission denied ») : `var/` créé par root → `chown -R` vers le propriétaire du projet + `cache:clear` en tant que lui.
   Toujours lancer git / console / composer en tant qu'utilisateur du site (`su - <user> -s /bin/bash`, vérifier `whoami`), jamais en root.
-- ⏳ Déploiement auto (2026-11-22) : utilisateur du site **`famil6315`**, SSH sur le port **7899** (pas 22 → secret
+- ✅ Déploiement auto (2026-11-22, **premier passage réussi sur GitHub**) : utilisateur du site **`famil6315`**, SSH sur le port **7899** (pas 22 → secret
   `DEPLOY_PORT=7899`, `ssh-keyscan -p 7899`), domaine non proxifié (`DEPLOY_HOST=sarah.famille-pitz.net`). Clé créée,
   ligne `command="…"` ajoutée, test `ssh -i ~/deploy_sarah -p 7899 … famil6315@localhost` ✅ jusqu'au bout (après
   un 2ᵉ `chown` : `git pull` + console lancés en root à 11:44–12:02). « PTY allocation request failed » = normal (no-pty).
-  Reste : 5 secrets dans l'environnement GitHub `production`, `rm ~/deploy_sarah*`, commit + push → premier déploiement.
+  Secrets `DEPLOY_*` créés (environnement `production`), clé privée supprimée du VPS.
 - Reste : vérifications dans le navigateur (section 8 de cyberpanel.md) — envoi de vidéo, « mot de passe oublié » et
   réception des e-mails, pastille 💬, « Supprimer des médias », « Prévenir la famille » ; super-admin et albums publics
   (voir « Rôles et visibilité ») si pas encore fait.
@@ -112,7 +112,7 @@ les erreurs MIME (fiche 036, à déployer). Reste à confirmer : « mot de passe
 - **Mise en ligne (2026-11-22, révisée le même jour)** : déploiement **automatique à chaque push sur `main`**, après
   les tests (GitHub Actions → SSH utilisateur du site). Pas de script dans le dépôt : la commande de mise à jour
   (git pull + composer + assets + migrations + cache) est écrite en dur dans `command="…"` de `authorized_keys`
-  sur le VPS (fiche 039, `cyberpanel.md` 6.4 ; secrets `DEPLOY_*` dans l'environnement GitHub `production`). Procédure manuelle gardée en secours. **Pas de sauvegarde** pour le moment
+  sur le VPS (fiche 039, `cyberpanel.md` 6.4 ; secrets `DEPLOY_*` dans l'environnement GitHub `production`) — **en service**. Procédure manuelle gardée en secours. **Pas de sauvegarde** pour le moment
   (choix de l'utilisateur) : ne pas en reproposer sans demande.
 
 - **Rôles et visibilité (2026-11-13, fusionné par la PR #10)** : `ROLE_USER` < `ROLE_ADMIN`
