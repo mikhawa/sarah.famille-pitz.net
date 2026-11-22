@@ -50,6 +50,11 @@ Le VPS est sous **AlmaLinux 9** + **CyberPanel** (OpenLiteSpeed, lsphp83, un uti
   (`cyberpanel.md` corrigé). `/admin` était en 500 (« mkdir … var/cache/prod/asset_mapper :
   Permission denied ») : `var/` créé par root → `chown -R` vers le propriétaire du projet + `cache:clear` en tant que lui.
   Toujours lancer git / console / composer en tant qu'utilisateur du site (`su - <user> -s /bin/bash`, vérifier `whoami`), jamais en root.
+- ⏳ Déploiement auto (2026-11-22) : utilisateur du site **`famil6315`**, SSH sur le port **7899** (pas 22 → secret
+  `DEPLOY_PORT=7899`, `ssh-keyscan -p 7899`), domaine non proxifié (`DEPLOY_HOST=sarah.famille-pitz.net`). Clé créée,
+  ligne `command="…"` ajoutée, test `ssh -i ~/deploy_sarah -p 7899 … famil6315@localhost` ✅ jusqu'au bout (après
+  un 2ᵉ `chown` : `git pull` + console lancés en root à 11:44–12:02). « PTY allocation request failed » = normal (no-pty).
+  Reste : 5 secrets dans l'environnement GitHub `production`, `rm ~/deploy_sarah*`, commit + push → premier déploiement.
 - Reste : vérifications dans le navigateur (section 8 de cyberpanel.md) — envoi de vidéo, « mot de passe oublié » et
   réception des e-mails, pastille 💬, « Supprimer des médias », « Prévenir la famille » ; super-admin et albums publics
   (voir « Rôles et visibilité ») si pas encore fait.
@@ -82,7 +87,7 @@ puis rendre publics les albums à partager (la migration a tout passé en privé
   (filtre `itemData` → `element`), fondu seulement pour une photo hors de la page.
 
 Suite de tests : 87 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/` 001 à 038 (opus 001–026 et 031–037, haiku 027–028, sonnet 029–030 et 038 ; numérotation globale, prochain **039**) ; journal `documentations-dev/001` à `038` (prochain **039**).
+Traçabilité : `.claude-tasks/` 001 à 039 (opus 001–026 et 031–037, haiku 027–028, sonnet 029–030 et 038–039 ; numérotation globale, prochain **040**) ; journal `documentations-dev/001` à `039` (prochain **040**).
 
 ### Suppression de médias depuis un album (2026-11-21, PR #12, fusionnée dans `main`)
 
@@ -104,9 +109,11 @@ les erreurs MIME (fiche 036, à déployer). Reste à confirmer : « mot de passe
 
 ## Décisions prises avec l'utilisateur
 
-- **Mise en ligne (2026-11-22)** : uniquement par git depuis `main`, à la main sur le VPS — pas de script
-  (`deploy.sh` / `backup.sh` supprimés), pas de déploiement GitHub Actions, **pas de sauvegarde** pour le moment.
-  Ne pas reproposer de script de déploiement ni de sauvegarde sans demande.
+- **Mise en ligne (2026-11-22, révisée le même jour)** : déploiement **automatique à chaque push sur `main`**, après
+  les tests (GitHub Actions → SSH utilisateur du site). Pas de script dans le dépôt : la commande de mise à jour
+  (git pull + composer + assets + migrations + cache) est écrite en dur dans `command="…"` de `authorized_keys`
+  sur le VPS (fiche 039, `cyberpanel.md` 6.4 ; secrets `DEPLOY_*` dans l'environnement GitHub `production`). Procédure manuelle gardée en secours. **Pas de sauvegarde** pour le moment
+  (choix de l'utilisateur) : ne pas en reproposer sans demande.
 
 - **Rôles et visibilité (2026-11-13, fusionné par la PR #10)** : `ROLE_USER` < `ROLE_ADMIN`
   < `ROLE_SUPER_ADMIN` ; albums/médias Public / Privé / Super-admin seul + verrou du super-admin ; **tout l'existant

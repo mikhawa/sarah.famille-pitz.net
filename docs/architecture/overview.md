@@ -154,4 +154,5 @@ Le type est détecté sur le **contenu** du fichier, pas sur son extension.
 4. ✅ **Front** : fil chronologique, albums, tags, fiche média et lecteurs.
 5. ✅ **Commentaires** : ajout par les membres, modération dans l'admin.
 6. ✅ **Prod** : `X-Accel-Redirect`, pas de sauvegarde automatique pour l'instant — procédure dans [vps-preprod.md](../devops/vps-preprod.md) ;
-   mise en ligne à la main sur le VPS, avec git (branche `main`) ; GitHub Actions ne fait que les tests.
+   mise en ligne **automatique à chaque push sur `main`** : GitHub Actions lance les tests, puis le job `deploy` se connecte
+   en SSH (clé limitée par `command=` dans `authorized_keys`) et lance git pull, composer, migrations et cache:clear ; aucun script dans le dépôt.

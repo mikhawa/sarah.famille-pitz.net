@@ -2,8 +2,8 @@
 
 CyberPanel sert les sites avec **OpenLiteSpeed** (pas nginx) et le PHP de LiteSpeed (`lsphp83`, pas PHP-FPM).
 Chaque site a son propre utilisateur Linux. Cette page remplace les sections 1, 2, 4 et 5 de
-[vps-preprod.md](vps-preprod.md) ; la mise à jour du site (section 6) la remplace aussi : tout se fait à la main
-sur le VPS, avec git (branche `main`). GitHub ne se connecte jamais au serveur.
+[vps-preprod.md](vps-preprod.md) ; la mise à jour du site (section 6) la remplace aussi : elle se fait avec git (branche `main`),
+**automatiquement à chaque push sur `main`** une fois les tests verts (section 6.4), ou à la main en secours (6.1 à 6.3).
 
 Les points marqués **à vérifier** dépendent de la version de CyberPanel et du système (Ubuntu ou AlmaLinux).
 
@@ -27,7 +27,8 @@ Dans cette page :
 ## Vue d'ensemble
 
 ```
-GitHub (branche main) ◄── git fetch / git pull ── <user>@VPS   (mise à jour à la main, section 6)
+GitHub (branche main) ──► tests ──► SSH (clé limitée) ──► <user>@VPS : git pull + composer + migrations (section 6.4)
+                    ◄── git fetch / git pull ── <user>@VPS   (secours à la main, sections 6.1 à 6.3)
 
 <app>/            code du dépôt (git clone), var/storage/media/ = photos et vidéos
 <app>/public/     racine web d'OpenLiteSpeed (au lieu de <site>/public_html)
@@ -180,10 +181,9 @@ statiques (CSS, JS) répondent 403.
 
 ## 6. Mise à jour du site (git, branche main)
 
-Pour le moment, la mise en ligne se fait **à la main, avec git, depuis la branche `main`** : pas de déploiement
-automatique, pas de clé SSH entre GitHub et le VPS. Le dépôt GitHub est **public** : le VPS fait `git fetch` / `git pull`
-sans clé. Les tests tournent sur GitHub à chaque push, mais n'installent rien sur le serveur : vérifier qu'ils sont
-verts sur le dernier commit de `main` avant de mettre à jour.
+Chaque push sur `main` met le VPS à jour **automatiquement**, une fois les tests verts (section 6.4). Les sections
+6.1 à 6.3 décrivent la même mise à jour **à la main** : c'est la procédure de secours (clé SSH ou GitHub indisponibles)
+et celle du premier démarrage. Le dépôt GitHub est **public** : le VPS fait `git fetch` / `git pull` sans clé.
 
 Prérequis : sections 3 (accès SSH de l'utilisateur du site) et 4 (code dans `<app>`) terminées.
 
@@ -234,6 +234,70 @@ $PHP bin/console cache:clear --no-interaction
 - Retour en arrière : noter `git log -1` avant la mise à jour, puis `git checkout <commit précédent>` et les mêmes
   commandes ; une migration déjà jouée ne se défait pas toute seule.
 
+### 6.4 Mise à jour automatique depuis GitHub (push sur main)
+
+Principe : `.github/workflows/ci-deploy.yml` lance les tests ; s'ils passent et que le push vise `main`, le job
+`deploy` ouvre une connexion SSH vers le VPS avec une clé dédiée. Cette clé ne sait **rien faire d'autre** que la mise
+à jour : la commande est écrite en dur dans `~/.ssh/authorized_keys` (option `command="…"`), GitHub n'envoie aucune
+commande. Un push sur une autre branche ou une pull request ne déploie jamais. **Pas de sauvegarde avant les
+migrations** (choix de l'utilisateur).
+
+La mise à jour refuse de s'exécuter si la copie du serveur contient des modifications (`git diff` non vide) et ne fait
+que des `git pull --ff-only` : en cas d'échec, rien n'est forcé et le job GitHub passe au rouge.
+
+**a) Créer la clé, en tant que `<user>`** (jamais en root : vérifier `whoami` et `$HOME`, voir 6.1)
+
+```bash
+whoami; echo "$HOME"                   # <user> et /home/famille-pitz.net, surtout pas root ni /root
+ssh-keygen -t ed25519 -N '' -C github-deploy-sarah -f ~/deploy_sarah
+```
+
+**b) Imposer la commande dans `authorized_keys`** (le `PATH` d'une session SSH non interactive est minimal : tout est en
+chemins absolus ; la ligne ne contient aucun guillemet double imbriqué)
+
+```bash
+APP=/home/famille-pitz.net/sarah.famille-pitz.net/sarah.famille-pitz.net
+PHP=/usr/local/lsws/lsphp83/bin/php
+COMPOSER=$(command -v composer)
+echo "$COMPOSER"                       # doit afficher un chemin (ex. /usr/local/bin/composer), sinon s'arrêter
+
+CMD="cd $APP && git diff --quiet && git diff --cached --quiet && git pull --ff-only origin main && $PHP $COMPOSER install --no-dev --optimize-autoloader --classmap-authoritative --no-interaction --no-progress && $PHP $COMPOSER dump-env prod && $PHP bin/console importmap:install --no-interaction && $PHP bin/console asset-map:compile --no-interaction && $PHP bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration && $PHP bin/console cache:clear --no-interaction"
+
+mkdir -p ~/.ssh && chmod 700 ~/.ssh
+echo "command=\"$CMD\",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty $(cat ~/deploy_sarah.pub)" >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+wc -l ~/.ssh/authorized_keys           # une ligne de plus qu'avant : la nouvelle clé tient sur UNE seule ligne
+```
+
+**c) Tester depuis le VPS lui-même** (doit lancer la mise à jour complète et afficher la sortie de git et de composer)
+
+```bash
+ssh -i ~/deploy_sarah -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$(whoami)"@localhost
+```
+
+Si `localhost` refuse la connexion, voir le tableau « En cas de problème » plus bas (SSH et `~/.ssh`).
+
+**d) Créer les secrets GitHub** : dépôt → *Settings* → *Environments* → **production** (créer l'environnement s'il n'existe
+pas) → *Environment secrets*.
+
+| Secret                | Valeur                                                                                              |
+|-----------------------|-----------------------------------------------------------------------------------------------------|
+| `DEPLOY_SSH_KEY`      | sortie de `cat ~/deploy_sarah` (clé privée, lignes `BEGIN`/`END` comprises)                          |
+| `DEPLOY_KNOWN_HOSTS`  | sortie de `ssh-keyscan -p 22 <DEPLOY_HOST>` (mêmes hôte et port que ci-dessous)                     |
+| `DEPLOY_HOST`         | nom d'hôte ou **IP** du VPS ; derrière Cloudflare en mode proxy (nuage orange), utiliser l'IP du VPS, pas le nom |
+| `DEPLOY_USER`         | sortie de `whoami` (l'utilisateur du site)                                                          |
+| `DEPLOY_PORT`         | facultatif : port SSH, `22` par défaut                                                              |
+
+Une fois les cinq valeurs copiées dans GitHub, **supprimer la clé du serveur** (la clé publique reste dans
+`authorized_keys`) :
+
+```bash
+rm -f ~/deploy_sarah ~/deploy_sarah.pub
+```
+
+**e) Premier passage** : pousser (ou fusionner) sur `main`, puis suivre l'onglet *Actions* : tests, puis job `deploy`.
+Vérifications : section 8. Pour révoquer l'accès : supprimer la ligne `github-deploy-sarah` de `~/.ssh/authorized_keys`.
+
 ## 7. Sauvegardes
 
 Pas de sauvegarde automatique pour le moment (choix de l'utilisateur).
@@ -261,5 +325,10 @@ visionneuse, vérifier qu'une invitation par e-mail arrive.
 | CSS / JS en 403                           | droits de lecture de `<app>/public/` pour OpenLiteSpeed (étape 5)              |
 | Vidéos refusées à l'envoi                 | ffmpeg absent ou `proc_open` désactivé (étape 2)                               |
 | Miniatures absentes (404 sur `/media/<id>/thumb/…`) | `php bin/console app:media:regenerate-thumbs` (recrée les miniatures manquantes depuis les originaux) |
+| Job `deploy` : « Connection timed out » / « refused » | le port SSH est fermé : pare-feu CyberPanel (*Security* → *Firewall*) ou `firewalld` ; **GitHub n'a pas d'IP fixe** : le port doit être ouvert à toutes les adresses (clé seule, pas de mot de passe) ; port différent de 22 → secret `DEPLOY_PORT` |
+| Job `deploy` : « Permission denied (publickey) » | mauvais `DEPLOY_USER` (doit être `whoami` de l'utilisateur du site), clé mal copiée, droits : `chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys`, propriétaire de `~` et `~/.ssh` = `<user>` |
+| Job `deploy` : « Host key verification failed » | `DEPLOY_KNOWN_HOSTS` ne correspond pas à `DEPLOY_HOST` (mêmes nom/IP et port) : refaire `ssh-keyscan` |
+| « Permission denied » sur `.git` ou `var/` pendant la mise à jour | fichiers appartenant à root (mise à jour lancée en root un jour) : en root, `cd <app> && find . ! -user "$(stat -c %U .)"` puis `chown -R` (voir l'encadré en tête de page) |
+| La mise à jour s'arrête tout de suite, sans message de composer | copie locale modifiée : sur le VPS, `cd <app> && git diff` (et `git diff --cached`) ; annuler ou valider ces modifications, ne jamais forcer |
 | `git pull --ff-only` refuse               | modifications locales ou historique divergent sur le serveur : `git status`, ne rien forcer sans comprendre |
 | « Composer detected issues in your platform » | composer lancé avec un autre PHP : utiliser `$PHP "$COMPOSER" …` (étape 6.3) |
