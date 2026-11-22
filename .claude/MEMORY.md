@@ -1,6 +1,7 @@
 # Mémoire du projet — état d'avancement
 
-Dernière mise à jour : 2026-11-21 — branche `main` (PR #11 `feature/08-retouches` fusionnée : 72/page, visionneuse sur toutes les photos des albums, tags et de l'accueil)
+Dernière mise à jour : 2026-11-22 — branche `main` (PR #12 `feature/09-mail-to-users-product` fusionnée + commits e-mails sur `main`) ;
+en cours : suppression de `bin/deploy.sh` / `bin/backup.sh`, mise en ligne manuelle par git (fiche 038, non commitée)
 
 ## Où on en est
 
@@ -13,15 +14,17 @@ Plan en 6 étapes (détail : `docs/architecture/overview.md`, section « Plan de
    précédent/suivant, clavier/glissement), pagination 72/page ; déconnexion des comptes désactivés
 5. ✅ Commentaires — entité `Comment`, ajout par les membres, `CommentVoter`, modération (`is_hidden`) dans l'admin — « petits mots » sous chaque média, suppression par l'auteur, interrupteur « Masqué » dans `/admin/comment`
 6. ✅ Prod (préparée, **pas encore déployée**) — `X-Accel-Redirect` (`MEDIA_X_ACCEL_PREFIX`, actif aussi en Docker dev),
-   `bin/backup.sh`, configs `docs/devops/prod/`, procédure `docs/devops/vps-preprod.md`, logs prod en fichiers tournants
-   **Déploiement uniquement par GitHub, jamais automatique** (décisions de l'utilisateur) : `.github/workflows/ci-deploy.yml`
-   = tests (préprod) à chaque push/PR ; déploiement seulement par « Run workflow » (`workflow_dispatch`) sur `main`,
-   après les tests → SSH → `bin/deploy.sh <sha>` (clé limitée par `command=` dans authorized_keys)
+   configs `docs/devops/prod/`, procédure `docs/devops/cyberpanel.md`, logs prod en fichiers tournants
+   **Mise en ligne manuelle par git, branche `main` seule** (décision du 2026-11-22, remplace le déploiement GitHub) :
+   sur le VPS, en tant qu'utilisateur du site, `git pull` de `main` puis composer / assets / migrations / cache
+   (commandes dans `cyberpanel.md`). `bin/deploy.sh` et `bin/backup.sh` supprimés ; le workflow GitHub ne fait plus
+   que les tests (préprod) : plus de clé SSH GitHub → VPS ni de secrets `DEPLOY_*`.
+   **Pas de sauvegarde** pour le moment (choix de l'utilisateur, même pas celles de CyberPanel).
 
 Le VPS est sous **AlmaLinux 9** + **CyberPanel** (OpenLiteSpeed, lsphp83, un utilisateur Linux par site ;
 `vps-preprod.md` = variante nginx, adaptée aussi à AlmaLinux 9 : dnf, Remi, RPM Fusion, SELinux) : procédure
-`docs/devops/cyberpanel.md` ; `MEDIA_X_ACCEL_PREFIX` vide (pas de X-Accel), `.deploy.env` (PHP_BIN, COMPOSER_BIN),
-secret GitHub `DEPLOY_USER`, racine web `<home>/app/public` (vHost Conf), `public/.htaccess`.
+`docs/devops/cyberpanel.md` ; `MEDIA_X_ACCEL_PREFIX` vide (pas de X-Accel), PHP CLI `/usr/local/lsws/lsphp83/bin/php`
+(composer lancé avec lui), racine web `<projet>/public` (vHost Conf), `public/.htaccess`.
 
 ### Miniatures en prod (2026-11-06, branche `fix/02-miniatures-prod`)
 
@@ -36,22 +39,19 @@ secret GitHub `DEPLOY_USER`, racine web `<home>/app/public` (vHost Conf), `publi
   max_file_uploads 50, date.timezone Europe/Brussels, opcache.validate_timestamps On ; le reste était déjà bon
   (memory_limit 1024M, post_max_size 3G, disable_functions vide). En CLI, PHP force max_execution_time 0 et
   max_input_time -1 (même via get_cfg_var) : vérifier ces deux-là par `grep` dans le fichier.
-- ✅ Dépôt GitHub **public** : pas de deploy key pour cloner ; une seule clé (GitHub Actions → VPS).
-- ⏳ Clé de déploiement (section 6 de cyberpanel.md) : premier essai fait **en root** par erreur
-  (« /root/app/bin/deploy.sh: No such file or directory ») ; nettoyage de `/root/.ssh/authorized_keys` donné,
-  à refaire en tant qu'utilisateur du site (`su - "$SITEUSER" -s /bin/bash`, vérifier `whoami` / `$HOME`).
-  Chemin du script : voir ci-dessous (cyberpanel.md corrigé le 2026-11-02, section 6.1).
+- ✅ Dépôt GitHub **public** : pas de deploy key pour cloner.
+- ❌ Clé de déploiement GitHub → VPS abandonnée (2026-11-22). Un premier essai fait en root avait laissé une ligne
+  `github-deploy-sarah` dans `/root/.ssh/authorized_keys` : vérifier qu'elle a bien été retirée.
 - ✅ Site en ligne, admin comprise (2026-11-02). **Chemin réel** : `/home/famille-pitz.net/sarah.famille-pitz.net/sarah.famille-pitz.net`
   (sous-domaine de famille-pitz.net → utilisateur Linux du domaine parent), pas `/home/sarah.famille-pitz.net/app`
   (`cyberpanel.md` corrigé). `/admin` était en 500 (« mkdir … var/cache/prod/asset_mapper :
   Permission denied ») : `var/` créé par root → `chown -R` vers le propriétaire du projet + `cache:clear` en tant que lui.
-  Toujours lancer console / composer / deploy.sh en tant qu'utilisateur du site, jamais en root.
-- Reste : secrets GitHub (6.5), sauvegardes (section 7), premier « Run workflow », vérifications (section 8).
+  Toujours lancer git / console / composer en tant qu'utilisateur du site (`su - <user> -s /bin/bash`, vérifier `whoami`), jamais en root.
+- Reste : première mise à jour par git selon la nouvelle procédure (migration `Version20261121165628` comprise),
+  installer ffmpeg, vérifications (section 8 de cyberpanel.md).
 
-À faire ensuite : finir l'installation du VPS (ci-dessus), premier passage du workflow de déploiement sur GitHub
-(premier passage des tests : 2 échecs SMTP, corrigés par MAILER_DSN=null://null — passage au vert non confirmé ;
-déploiement jamais lancé), design adapté
-à Sarah (6 ans).
+À faire ensuite : finir l'installation du VPS (ci-dessus), confirmer que les tests GitHub passent au vert
+(2 échecs SMTP corrigés par MAILER_DSN=null://null, non confirmé), design adapté à Sarah (6 ans).
 
 ### Rôles et visibilité (PR #10, fusionnée dans `main`)
 
@@ -78,9 +78,9 @@ puis rendre publics les albums à partager (la migration a tout passé en privé
   (filtre `itemData` → `element`), fondu seulement pour une photo hors de la page.
 
 Suite de tests : 87 tests verts (`docker compose exec php php bin/phpunit`).
-Traçabilité : `.claude-tasks/` 001 à 037 (opus 001–026 et 031–037, haiku 027–028, sonnet 029–030 ; numérotation globale, prochain **038**) ; journal `documentations-dev/001` à `037` (prochain **038**).
+Traçabilité : `.claude-tasks/` 001 à 038 (opus 001–026 et 031–037, haiku 027–028, sonnet 029–030 et 038 ; numérotation globale, prochain **039**) ; journal `documentations-dev/001` à `038` (prochain **039**).
 
-### Suppression de médias depuis un album (2026-11-21, branche `feature/09-mail-to-users-product`, non commitée)
+### Suppression de médias depuis un album (2026-11-21, PR #12, fusionnée dans `main`)
 
 Super-admin seul (`AlbumVoter::DELETE_MEDIA`) : admin → Albums → « Supprimer des médias » → `/admin/album/{id}/medias`,
 médias à cocher ; base + fichiers (`MediaFileCleanupListener`) + commentaires (`ON DELETE CASCADE`). Pas encore essayé dans le navigateur.
@@ -99,6 +99,10 @@ Erreurs 500 en prod (2026-11-21, envoi de photos et mot de passe oublié) : `Rfc
 les erreurs MIME (fiche 036, à déployer). Reste à confirmer : « mot de passe oublié » et réception réelle des e-mails.
 
 ## Décisions prises avec l'utilisateur
+
+- **Mise en ligne (2026-11-22)** : uniquement par git depuis `main`, à la main sur le VPS — pas de script
+  (`deploy.sh` / `backup.sh` supprimés), pas de déploiement GitHub Actions, **pas de sauvegarde** pour le moment.
+  Ne pas reproposer de script de déploiement ni de sauvegarde sans demande.
 
 - **Rôles et visibilité (2026-11-13, fusionné par la PR #10)** : `ROLE_USER` < `ROLE_ADMIN`
   < `ROLE_SUPER_ADMIN` ; albums/médias Public / Privé / Super-admin seul + verrou du super-admin ; **tout l'existant

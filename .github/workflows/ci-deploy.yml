@@ -1,8 +1,7 @@
-# Préprod : tests à chaque push et pull request.
-# Prod : déploiement sur le VPS uniquement à la demande (Actions → « Tests et déploiement » → Run workflow, branche main),
-# après les tests de ce même lancement. Un push ne déploie jamais.
-# Secrets à créer dans GitHub (Settings → Environments → production) : voir docs/devops/vps-preprod.md, section 6.
-name: Tests et déploiement
+# Préprod : tests à chaque push et pull request (relançables à la main depuis l'onglet Actions).
+# Aucun déploiement depuis GitHub : la mise en ligne se fait à la main sur le VPS, avec git (branche main) :
+# voir docs/devops/cyberpanel.md, section 6.
+name: Tests
 
 on:
   push:
@@ -70,38 +69,3 @@ jobs:
 
       - name: Tests PHPUnit
         run: php bin/phpunit --no-coverage
-
-  deploy:
-    name: Déploiement (prod)
-    needs: tests
-    # Lancement manuel sur main uniquement (deploy.sh refuse de toute façon un commit absent de origin/main)
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
-    environment: production
-    # Un seul déploiement à la fois ; un nouveau push attend la fin du précédent
-    concurrency:
-      group: production
-      cancel-in-progress: false
-    steps:
-      - name: Clé SSH
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-        run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
-          # Empreinte du serveur fixée dans les secrets : pas de StrictHostKeyChecking=no
-          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-
-      - name: Mise à jour du VPS
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
-          # Utilisateur Linux du site (CyberPanel en crée un par site)
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER || 'sarah' }}
-        # Côté serveur, cette clé ne peut lancer que bin/deploy.sh, qui reçoit le commit testé
-        run: ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" "$GITHUB_SHA"
-
-      - name: Nettoyage de la clé
-        if: always()
-        run: rm -f ~/.ssh/deploy_key

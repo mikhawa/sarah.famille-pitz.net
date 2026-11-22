@@ -153,5 +153,5 @@ Le type est détecté sur le **contenu** du fichier, pas sur son extension.
 3. ✅ **Médias** : entité `Media`, upload privé, nettoyage EXIF/GPS, miniatures, `MediaFileController`, CRUD admin.
 4. ✅ **Front** : fil chronologique, albums, tags, fiche média et lecteurs.
 5. ✅ **Commentaires** : ajout par les membres, modération dans l'admin.
-6. ✅ **Prod** : `X-Accel-Redirect`, sauvegardes de la BDD et de `var/storage/` — procédure dans [vps-preprod.md](../devops/vps-preprod.md) ;
-   déploiement uniquement par GitHub Actions (tests puis `bin/deploy.sh` sur le VPS).
+6. ✅ **Prod** : `X-Accel-Redirect`, pas de sauvegarde automatique pour l'instant — procédure dans [vps-preprod.md](../devops/vps-preprod.md) ;
+   mise en ligne à la main sur le VPS, avec git (branche `main`) ; GitHub Actions ne fait que les tests.

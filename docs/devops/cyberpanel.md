@@ -2,8 +2,8 @@
 
 CyberPanel sert les sites avec **OpenLiteSpeed** (pas nginx) et le PHP de LiteSpeed (`lsphp83`, pas PHP-FPM).
 Chaque site a son propre utilisateur Linux. Cette page remplace les sections 1, 2, 4 et 5 de
-[vps-preprod.md](vps-preprod.md) ; le déploiement par GitHub (section 6) et les sauvegardes (section 7) restent
-valables, avec les adaptations ci-dessous.
+[vps-preprod.md](vps-preprod.md) ; la mise à jour du site (section 6) la remplace aussi : tout se fait à la main
+sur le VPS, avec git (branche `main`). GitHub ne se connecte jamais au serveur.
 
 Les points marqués **à vérifier** dépendent de la version de CyberPanel et du système (Ubuntu ou AlmaLinux).
 
@@ -18,7 +18,7 @@ Dans cette page :
   **`/home/famille-pitz.net/sarah.famille-pitz.net/sarah.famille-pitz.net`**
 - `PHP=/usr/local/lsws/lsphp83/bin/php` : le PHP 8.3 de LiteSpeed (le `php` du système peut être une autre version)
 
-> **Tout se fait en tant que `<user>`, jamais en root** (sauf les sections 2 et 7 marquées « en root ») : un
+> **Tout se fait en tant que `<user>`, jamais en root** (sauf la section 2 et le début de la section 6.1 marqués « en root ») : un
 > `composer` ou un `bin/console` lancé en root crée dans `var/` des fichiers que PHP ne peut plus modifier
 > (erreur 500 rencontrée sur `/admin` : « Failed to create …/var/cache/prod/asset_mapper: mkdir(): Permission denied »).
 > Réparation, en root : `cd <app> && chown -R "$(stat -c '%U:%G' .)" var/`, puis
@@ -27,12 +27,11 @@ Dans cette page :
 ## Vue d'ensemble
 
 ```
-GitHub (main) ──Run workflow──► tests ──► SSH <user>@VPS ──► <app>/bin/deploy.sh <commit>
-                                                                  │
+GitHub (branche main) ◄── git fetch / git pull ── <user>@VPS   (mise à jour à la main, section 6)
+
 <app>/            code du dépôt (git clone), var/storage/media/ = photos et vidéos
 <app>/public/     racine web d'OpenLiteSpeed (au lieu de <site>/public_html)
 <app>/.env.local  secrets (hors git)
-<app>/.deploy.env réglages de deploy.sh pour CyberPanel (hors git)
 ```
 
 ## 1. Créer le site et la base (interface CyberPanel)
@@ -140,16 +139,6 @@ Dans `.env.local` :
 - `MEDIA_X_ACCEL_PREFIX=` **vide** : OpenLiteSpeed ne comprend pas l'en-tête nginx `X-Accel-Redirect`. PHP envoie
   lui-même les fichiers, avance rapide dans les vidéos comprise (testé par la suite de tests).
 
-Réglages du script de déploiement :
-
-```bash
-cat > .deploy.env <<'EOF'
-PHP_BIN=/usr/local/lsws/lsphp83/bin/php
-COMPOSER_BIN=/usr/local/bin/composer        # résultat de « command -v composer »
-EOF
-chmod 600 .deploy.env
-```
-
 Première installation :
 
 ```bash
@@ -189,11 +178,12 @@ Droits : OpenLiteSpeed doit pouvoir lire `<app>/public/` ; reprendre le groupe d
 (`ls -ld <site>/public_html`, puis `chgrp -R <groupe> <app>/public && chmod -R g+rX <app>/public`) si les fichiers
 statiques (CSS, JS) répondent 403.
 
-## 6. Déploiement depuis GitHub
+## 6. Mise à jour du site (git, branche main)
 
-Principe identique à [vps-preprod.md, section 6](vps-preprod.md#6-déploiement-par-github). Le dépôt GitHub est
-**public** : le VPS fait `git clone` / `git fetch` sans clé. Une seule clé est à créer : celle avec laquelle
-**GitHub Actions se connecte au VPS**, limitée au lancement de `bin/deploy.sh`.
+Pour le moment, la mise en ligne se fait **à la main, avec git, depuis la branche `main`** : pas de déploiement
+automatique, pas de clé SSH entre GitHub et le VPS. Le dépôt GitHub est **public** : le VPS fait `git fetch` / `git pull`
+sans clé. Les tests tournent sur GitHub à chaque push, mais n'installent rien sur le serveur : vérifier qu'ils sont
+verts sur le dernier commit de `main` avant de mettre à jour.
 
 Prérequis : sections 3 (accès SSH de l'utilisateur du site) et 4 (code dans `<app>`) terminées.
 
@@ -203,96 +193,50 @@ Prérequis : sections 3 (accès SSH de l'utilisateur du site) et 4 (code dans `<
 APP=/home/famille-pitz.net/sarah.famille-pitz.net/sarah.famille-pitz.net
 SITEUSER=$(stat -c %U "$APP")          # propriétaire du code = utilisateur du site
 echo "$SITEUSER"                       # ne doit PAS être root
-ls -l "$APP/bin/deploy.sh"             # le script doit exister
 su - "$SITEUSER" -s /bin/bash
-whoami          # l'utilisateur du site → secret DEPLOY_USER
+whoami          # l'utilisateur du site, jamais root
 echo "$HOME"    # /home/famille-pitz.net
-APP=/home/famille-pitz.net/sarah.famille-pitz.net/sarah.famille-pitz.net   # à redéfinir après le su
 ```
 
-> **Piège rencontré** : lancer la suite en root met la clé dans `/root/.ssh/authorized_keys` avec un chemin
-> faux (« No such file or directory » au test). Nettoyer en root :
-> `sed -i '/github-deploy-sarah/d' /root/.ssh/authorized_keys && rm -f /root/deploy_sarah /root/deploy_sarah.pub`,
-> puis reprendre en tant qu'utilisateur du site. Si `stat` affiche `root`, le code a été cloné en root :
+> **Piège rencontré** : lancer composer ou la console en root crée dans `var/` des fichiers que PHP ne peut plus
+> modifier (voir l'encadré en tête de page). Si `stat` affiche `root`, le code a été cloné en root :
 > `chown -R <user>:<groupe> "$APP"` (nom indiqué dans CyberPanel → *Websites* → *List Websites*).
 
-### 6.2 Créer la clé et l'autoriser, limitée à `deploy.sh`
+### 6.2 Récupérer la branche main
 
 ```bash
-mkdir -p ~/.ssh && chmod 700 ~/.ssh
-ssh-keygen -t ed25519 -N "" -C "github-deploy-sarah" -f ~/deploy_sarah
-echo "command=\"$APP/bin/deploy.sh\",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty $(cat ~/deploy_sarah.pub)" >> ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
-restorecon -Rv ~/.ssh 2>/dev/null   # seulement utile si SELinux est actif
+cd /home/famille-pitz.net/sarah.famille-pitz.net/sarah.famille-pitz.net     # <app>
+git status --short                     # doit être vide (aucune modification locale sur le serveur)
+git fetch origin main
+git checkout main
+git pull --ff-only origin main         # refuse s'il faut fusionner : ne rien forcer, chercher pourquoi
+git log -1 --oneline                   # le commit attendu
 ```
 
-### 6.3 Tester
+### 6.3 Dépendances, assets, migrations, cache
+
+Avec le PHP de LiteSpeed (composer lancé par ce PHP, car son « php » par défaut peut être une autre version) :
 
 ```bash
-ssh -i ~/deploy_sarah -p 22 -o StrictHostKeyChecking=accept-new "$USER@localhost" test
+PHP=/usr/local/lsws/lsphp83/bin/php
+COMPOSER=$(command -v composer)        # généralement /usr/local/bin/composer
+
+$PHP "$COMPOSER" install --no-dev --optimize-autoloader --classmap-authoritative --no-interaction --no-progress
+$PHP "$COMPOSER" dump-env prod
+$PHP bin/console importmap:install --no-interaction
+$PHP bin/console asset-map:compile --no-interaction
+$PHP bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+$PHP bin/console cache:clear --no-interaction
 ```
 
-Réponse attendue : **`Usage : deploy.sh <sha du commit sur 40 caractères>`** (la clé est acceptée et ne peut lancer
-que `deploy.sh`). Une demande de mot de passe : droits de `~/.ssh` ou shell de l'utilisateur (section 3).
-Adapter `-p 22` si le port SSH est différent.
-
-### 6.4 Valeurs pour GitHub, puis suppression de la clé privée
-
-```bash
-cat ~/deploy_sarah                                      # → DEPLOY_SSH_KEY (avec les lignes BEGIN / END)
-ssh-keyscan -p 22 sarah.famille-pitz.net 2>/dev/null    # → DEPLOY_KNOWN_HOSTS
-rm ~/deploy_sarah ~/deploy_sarah.pub                    # GitHub seul garde la clé privée
-```
-
-Dans `ssh-keyscan`, utiliser **exactement la valeur de `DEPLOY_HOST`**. Domaine derrière Cloudflare en mode proxy
-(nuage orange) : SSH ne passe pas, utiliser l'adresse IP du VPS dans les deux. Lancé sur le serveur lui-même,
-`ssh-keyscan` donne forcément la bonne empreinte.
-
-### 6.5 Secrets GitHub
-
-Dépôt → **Settings → Environments** → créer `production` → **Add environment secret** :
-
-| Secret               | Valeur                                                           |
-|----------------------|------------------------------------------------------------------|
-| `DEPLOY_SSH_KEY`     | clé privée (`cat ~/deploy_sarah`, étape 6.4)                     |
-| `DEPLOY_KNOWN_HOSTS` | sortie de `ssh-keyscan` (étape 6.4)                              |
-| `DEPLOY_HOST`        | `sarah.famille-pitz.net` ou l'IP (la même que pour `ssh-keyscan`) |
-| `DEPLOY_USER`        | résultat de `whoami` (étape 6.1)                                 |
-| `DEPLOY_PORT`        | seulement si le port SSH n'est pas 22                            |
-
-### 6.6 Mettre en ligne
-
-GitHub → **Actions** → « Tests et déploiement » → **Run workflow** → branche `main`. Les tests sont rejoués ; s'ils
-passent, le VPS sauvegarde puis installe le dernier commit de `main`.
-
-- **Pas de règle sudoers** : aucun redémarrage n'est nécessaire (opcache relit les fichiers modifiés).
-- Échec SSH : pare-feu de CyberPanel (*Security → Firewall*) — le port SSH doit être joignable depuis Internet
-  (GitHub Actions n'a pas d'adresse IP fixe) — puis `DEPLOY_USER`, `DEPLOY_PORT`, `DEPLOY_KNOWN_HOSTS`.
+- **Pas de redémarrage** de LiteSpeed : `opcache.validate_timestamps` est activé, PHP relit les fichiers modifiés.
+- `var/storage/media/` et `.env.local` ne sont pas dans git : la mise à jour n'y touche pas.
+- Retour en arrière : noter `git log -1` avant la mise à jour, puis `git checkout <commit précédent>` et les mêmes
+  commandes ; une migration déjà jouée ne se défait pas toute seule.
 
 ## 7. Sauvegardes
 
-Comme [vps-preprod.md, section 7](vps-preprod.md#7-sauvegardes), avec :
-
-- Compte MariaDB de sauvegarde créé en root (le mot de passe root MariaDB de CyberPanel est dans
-  `/etc/cyberpanel/mysqlPassword`) :
-
-  ```bash
-  mariadb -u root -p"$(cat /etc/cyberpanel/mysqlPassword)" -e "
-    CREATE USER 'sarah_backup'@'localhost' IDENTIFIED BY '<mot de passe fort>';
-    GRANT SELECT, LOCK TABLES, SHOW VIEW, TRIGGER, EVENT ON \`<base>\`.* TO 'sarah_backup'@'localhost';"
-  ```
-
-- Dossier de sauvegarde dans le compte du site, base au nom donné par CyberPanel : dans `~/.bashrc` **et** en tête
-  de la tâche cron, `BACKUP_DIR=$HOME/backups BACKUP_DB_NAME=<base>`.
-- Tâche planifiée : *Websites → Manage → Cron Jobs* (ou `crontab -e` en tant que `<user>`) :
-
-  ```cron
-  30 3 * * * BACKUP_DIR=$HOME/backups BACKUP_DB_NAME=<base> $HOME/sarah.famille-pitz.net/sarah.famille-pitz.net/bin/backup.sh >> $HOME/sarah.famille-pitz.net/sarah.famille-pitz.net/var/log/backup.log 2>&1
-  ```
-
-  `deploy.sh` lance aussi une sauvegarde avant chaque mise à jour : mettre les deux mêmes variables dans `.deploy.env`
-  (`export BACKUP_DIR=…`, `export BACKUP_DB_NAME=…`).
-- Copie hors du VPS toujours indispensable.
+Pas de sauvegarde automatique pour le moment (choix de l'utilisateur).
 
 ## 8. Vérifications après mise en ligne
 
@@ -317,5 +261,5 @@ visionneuse, vérifier qu'une invitation par e-mail arrive.
 | CSS / JS en 403                           | droits de lecture de `<app>/public/` pour OpenLiteSpeed (étape 5)              |
 | Vidéos refusées à l'envoi                 | ffmpeg absent ou `proc_open` désactivé (étape 2)                               |
 | Miniatures absentes (404 sur `/media/<id>/thumb/…`) | `php bin/console app:media:regenerate-thumbs` (recrée les miniatures manquantes depuis les originaux) |
-| Le déploiement GitHub échoue en SSH       | `DEPLOY_USER`, `DEPLOY_PORT`, pare-feu, `authorized_keys`, shell du site (étape 3) |
-| « Composer detected issues in your platform » | `PHP_BIN` / `COMPOSER_BIN` de `.deploy.env` pointent vers un autre PHP     |
+| `git pull --ff-only` refuse               | modifications locales ou historique divergent sur le serveur : `git status`, ne rien forcer sans comprendre |
+| « Composer detected issues in your platform » | composer lancé avec un autre PHP : utiliser `$PHP "$COMPOSER" …` (étape 6.3) |

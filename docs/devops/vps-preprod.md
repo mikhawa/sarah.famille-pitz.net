@@ -61,10 +61,9 @@ nginx -v                                       # 1.20 ou plus
 ```bash
 sudo useradd --create-home --shell /bin/bash sarah
 sudo usermod -aG sarah nginx               # nginx doit lire public/ et var/storage/media/
-sudo mkdir -p /var/www/sarah /var/backups/sarah
-sudo chown sarah:sarah /var/www/sarah /var/backups/sarah
+sudo mkdir -p /var/www/sarah
+sudo chown sarah:sarah /var/www/sarah
 sudo chmod 750 /var/www/sarah              # aucun accès pour les autres utilisateurs du serveur
-sudo chmod 700 /var/backups/sarah
 
 # Pare-feu (firewalld) : HTTP et HTTPS ; SSH est ouvert par défaut
 sudo firewall-cmd --permanent --add-service=http --add-service=https
@@ -100,9 +99,6 @@ sudo mariadb                       # root se connecte par le compte système, sa
 CREATE DATABASE sarah_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER 'sarah_user'@'127.0.0.1' IDENTIFIED BY '<mot de passe fort>';
 GRANT ALL ON sarah_db.* TO 'sarah_user'@'127.0.0.1';
--- Compte en lecture seule, réservé aux sauvegardes
-CREATE USER 'sarah_backup'@'localhost' IDENTIFIED BY '<autre mot de passe fort>';
-GRANT SELECT, LOCK TABLES, SHOW VIEW, TRIGGER, EVENT ON sarah_db.* TO 'sarah_backup'@'localhost';
 ```
 
 MariaDB n'écoute que localement (`bind-address = 127.0.0.1`, valeur par défaut).
@@ -163,106 +159,42 @@ lire le fichier. nginx envoie alors le fichier depuis la location `internal` : P
 et nginx gère les plages d'octets (avance rapide dans les vidéos) et l'`ETag`.
 Le préfixe `MEDIA_X_ACCEL_PREFIX` de `.env.local` doit correspondre à la location nginx. Vide : PHP envoie lui-même.
 
-## 6. Déploiement par GitHub
+## 6. Mise à jour du site (git, branche main)
 
-Le site ne se met **jamais** à jour à la main : tout passe par GitHub (`.github/workflows/ci-deploy.yml`).
+Pour le moment, la mise en ligne se fait **à la main, avec git, depuis la branche `main`** : pas de déploiement
+automatique, pas de clé SSH entre GitHub et le VPS. Les tests tournent sur GitHub à chaque push
+(`.github/workflows/ci-deploy.yml`) mais n'installent rien : vérifier qu'ils sont verts sur le dernier commit de `main`.
 
-```
-push sur une branche ou pull request ──► tests (préprod GitHub Actions : MariaDB 11.4, ffmpeg, PHPUnit, lint)
-« Run workflow » sur main (à la main) ──► tests ──► si verts : SSH vers le VPS ──► bin/deploy.sh <commit testé>
-```
-
-Un push sur `main` ne déploie **pas** : pour mettre en ligne, GitHub → Actions → « Tests et déploiement » →
-**Run workflow** → branche `main`. Les tests sont rejoués, puis le dernier commit de `main` est déployé.
-
-`bin/deploy.sh` vérifie que le commit appartient à `origin/main`, lance une sauvegarde, se place sur ce commit, installe
-les dépendances, compile les assets, joue les migrations, vide le cache et recharge PHP-FPM. Deux déploiements ne
-peuvent pas se chevaucher (verrou côté serveur et `concurrency` côté GitHub).
-
-### Mise en place (une seule fois)
-
-**1. Clé SSH réservée au déploiement**, générée sur un poste de confiance :
+En tant que `sarah` (jamais root : un composer ou une console lancés en root rendent `var/` illisible pour PHP-FPM) :
 
 ```bash
-ssh-keygen -t ed25519 -N "" -C "github-deploy-sarah" -f deploy_sarah
+cd /var/www/sarah
+git status --short                     # doit être vide
+git fetch origin main
+git checkout main
+git pull --ff-only origin main         # refuse s'il faut fusionner : ne rien forcer
+
+composer install --no-dev --optimize-autoloader --classmap-authoritative --no-interaction --no-progress
+composer dump-env prod
+php bin/console importmap:install --no-interaction
+php bin/console asset-map:compile --no-interaction
+php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+php bin/console cache:clear --no-interaction
 ```
 
-Sur le VPS, ajouter la clé publique dans `~sarah/.ssh/authorized_keys`, **limitée au script de déploiement** :
-
-```
-command="/var/www/sarah/bin/deploy.sh",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty ssh-ed25519 AAAA… github-deploy-sarah
-```
-
-Même volée, cette clé ne permet que de redéployer un commit déjà présent sur `main`.
-
-**2. Rechargement de PHP-FPM sans mot de passe**, pour cette seule commande (`sudo visudo -f /etc/sudoers.d/sarah-deploy`) :
-
-```
-sarah ALL=(root) NOPASSWD: /usr/bin/systemctl reload php-fpm
-```
-
-et dans `/var/www/sarah/.deploy.env` (ignoré par git, lu par `bin/deploy.sh`) :
+Le pool PHP-FPM fourni coupe `opcache.validate_timestamps` : sans rechargement, l'ancien code resterait en mémoire.
+Recharger PHP-FPM à la main après chaque mise à jour (en root ou avec `sudo`) :
 
 ```bash
-DEPLOY_RELOAD_CMD="sudo -n /usr/bin/systemctl reload php-fpm"
+sudo systemctl reload php-fpm
 ```
 
-Le pool fourni coupe `opcache.validate_timestamps` : sans ce rechargement, l'ancien code resterait en mémoire.
-
-**3. Accès du VPS au dépôt** : si le dépôt GitHub est privé, cloner en SSH avec une *deploy key* en lecture seule
-(GitHub → Settings → Deploy keys), distincte de la clé ci-dessus.
-
-**4. Secrets GitHub**, dans Settings → Environments → `production` (l'environnement peut aussi exiger une
-validation manuelle avant chaque déploiement) :
-
-| Secret               | Valeur                                                                  |
-|----------------------|-------------------------------------------------------------------------|
-| `DEPLOY_SSH_KEY`     | contenu de la clé privée `deploy_sarah` (à supprimer du poste ensuite)   |
-| `DEPLOY_KNOWN_HOSTS` | résultat de `ssh-keyscan -p <port> <hôte>`, **vérifié** contre l'empreinte affichée sur le VPS (`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`) |
-| `DEPLOY_HOST`        | nom ou adresse IP du VPS                                                |
-| `DEPLOY_PORT`        | port SSH (facultatif, 22 par défaut)                                    |
-| `DEPLOY_USER`        | utilisateur Linux du site (facultatif, `sarah` par défaut)              |
-
-**5. Premier déploiement** : la section 4 (installation manuelle) doit avoir été faite une fois, et les identifiants
-de sauvegarde (section 7) être en place, car `deploy.sh` commence par une sauvegarde ; ensuite, chaque mise en ligne
-se lance avec « Run workflow ». En cas de panne de GitHub, le même script se lance à la main en tant que `sarah` :
-`bin/deploy.sh $(git ls-remote origin main | cut -f1)`.
-
-`var/storage/media/` et `.env.local` ne sont pas dans git : le déploiement n'y touche pas.
+Si le dépôt GitHub est privé, cloner en SSH avec une *deploy key* en lecture seule (GitHub → Settings → Deploy keys).
+`var/storage/media/` et `.env.local` ne sont pas dans git : la mise à jour n'y touche pas.
 
 ## 7. Sauvegardes
 
-`bin/backup.sh` sauvegarde la base (dump compressé) et les médias (instantanés `rsync` : seuls les nouveaux fichiers
-sont copiés, les autres sont des liens physiques). 14 jours conservés par défaut. Détail des variables en tête du script.
-
-Identifiants du compte de sauvegarde, en tant que `sarah` :
-
-```bash
-printf '[client]\nuser=sarah_backup\npassword=<mot de passe>\n' > ~/.my.cnf && chmod 600 ~/.my.cnf
-```
-
-Tâche planifiée (`crontab -e` en tant que `sarah`) :
-
-```cron
-30 3 * * * /var/www/sarah/bin/backup.sh >> /var/www/sarah/var/log/backup.log 2>&1
-```
-
-**Copie hors du VPS indispensable** : une sauvegarde sur le même serveur ne protège ni d'une panne du disque,
-ni d'une perte du VPS. Copier régulièrement `/var/backups/sarah/` ailleurs (autre serveur avec `rsync` par SSH,
-ou stockage chiffré avec `rclone crypt`). Ce sont les photos d'une enfant : la copie distante doit être chiffrée
-ou sur une machine de la famille.
-
-### Restaurer
-
-```bash
-# Base (écrase le contenu actuel)
-zcat /var/backups/sarah/db/sarah_db_<date>.sql.gz | mariadb -u sarah_user -p sarah_db
-# Médias
-rsync -a --delete /var/backups/sarah/media/<date>/ /var/www/sarah/var/storage/media/
-```
-
-Tester une restauration de temps en temps dans une base jetable (`CREATE DATABASE sarah_restore_check`, import, vérification,
-`DROP DATABASE`) : une sauvegarde jamais relue n'est pas une sauvegarde.
+Pas de sauvegarde automatique pour le moment (choix de l'utilisateur).
 
 ## 8. Vérifications après mise en ligne
 
@@ -280,5 +212,4 @@ vérifier qu'une invitation par e-mail arrive.
 
 ## Reste à faire
 
-- Surveillance (disponibilité, espace disque de `var/storage/` et `/var/backups/`).
-- Copie des sauvegardes hors du VPS (section 7).
+- Surveillance (disponibilité, espace disque de `var/storage/`).
