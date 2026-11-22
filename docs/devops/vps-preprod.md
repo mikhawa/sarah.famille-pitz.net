@@ -161,31 +161,57 @@ Le préfixe `MEDIA_X_ACCEL_PREFIX` de `.env.local` doit correspondre à la locat
 
 ## 6. Mise à jour du site (git, branche main)
 
-Pour le moment, la mise en ligne se fait **à la main, avec git, depuis la branche `main`** : pas de déploiement
-automatique, pas de clé SSH entre GitHub et le VPS. Les tests tournent sur GitHub à chaque push
-(`.github/workflows/ci-deploy.yml`) mais n'installent rien : vérifier qu'ils sont verts sur le dernier commit de `main`.
+Chaque push sur `main` met le VPS à jour **automatiquement**, une fois les tests verts (`.github/workflows/ci-deploy.yml`,
+job `deploy`). Un push sur une autre branche ou une pull request ne déploie jamais. Même principe que sur CyberPanel :
+la procédure détaillée (clé, secrets GitHub, dépannage) est dans [cyberpanel.md, section 6.4](cyberpanel.md#64-mise-à-jour-automatique-depuis-github-push-sur-main) ;
+seules les valeurs changent ici (utilisateur `sarah`, `/var/www/sarah`, `php` et `composer` du système). **Pas de
+sauvegarde avant les migrations** (choix de l'utilisateur).
 
 En tant que `sarah` (jamais root : un composer ou une console lancés en root rendent `var/` illisible pour PHP-FPM) :
 
 ```bash
+whoami; echo "$HOME"                   # sarah, pas root
+ssh-keygen -t ed25519 -N '' -C github-deploy-sarah -f ~/deploy_sarah
+
+APP=/var/www/sarah
+PHP=$(command -v php)
+COMPOSER=$(command -v composer)
+echo "$PHP $COMPOSER"                  # deux chemins absolus, sinon s'arrêter
+
+# Le pool PHP-FPM fourni coupe opcache.validate_timestamps : sans rechargement, l'ancien code resterait en mémoire.
+# Le rechargement passe par sudo sans mot de passe, limité à cette seule commande (voir plus bas).
+CMD="cd $APP && git diff --quiet && git diff --cached --quiet && git pull --ff-only origin main && $PHP $COMPOSER install --no-dev --optimize-autoloader --classmap-authoritative --no-interaction --no-progress && $PHP $COMPOSER dump-env prod && $PHP bin/console importmap:install --no-interaction && $PHP bin/console asset-map:compile --no-interaction && $PHP bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration && $PHP bin/console cache:clear --no-interaction && sudo -n /usr/bin/systemctl reload php-fpm"
+
+mkdir -p ~/.ssh && chmod 700 ~/.ssh
+echo "command=\"$CMD\",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty $(cat ~/deploy_sarah.pub)" >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+```
+
+Autorisation du rechargement (en root ou avec `sudo`, une seule fois) :
+
+```bash
+echo 'sarah ALL=(root) NOPASSWD: /usr/bin/systemctl reload php-fpm' | sudo tee /etc/sudoers.d/sarah-reload
+sudo chmod 440 /etc/sudoers.d/sarah-reload && sudo visudo -cf /etc/sudoers.d/sarah-reload
+```
+
+(Si `opcache.validate_timestamps` était activé, le `&& sudo -n … reload php-fpm` final et ce fichier sudoers seraient inutiles.)
+
+Test depuis le VPS : `ssh -i ~/deploy_sarah -o BatchMode=yes -o StrictHostKeyChecking=accept-new sarah@localhost`. Secrets (*Settings* → *Environments* →
+`production`) : `DEPLOY_SSH_KEY` (`cat ~/deploy_sarah`), `DEPLOY_KNOWN_HOSTS` (`ssh-keyscan -p 22 <hôte>`), `DEPLOY_HOST`,
+`DEPLOY_USER` (`sarah`), `DEPLOY_PORT` (facultatif) ; puis `rm -f ~/deploy_sarah ~/deploy_sarah.pub`.
+
+**Secours à la main** (même utilisateur) :
+
+```bash
 cd /var/www/sarah
 git status --short                     # doit être vide
-git fetch origin main
-git checkout main
 git pull --ff-only origin main         # refuse s'il faut fusionner : ne rien forcer
-
 composer install --no-dev --optimize-autoloader --classmap-authoritative --no-interaction --no-progress
 composer dump-env prod
 php bin/console importmap:install --no-interaction
 php bin/console asset-map:compile --no-interaction
 php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
 php bin/console cache:clear --no-interaction
-```
-
-Le pool PHP-FPM fourni coupe `opcache.validate_timestamps` : sans rechargement, l'ancien code resterait en mémoire.
-Recharger PHP-FPM à la main après chaque mise à jour (en root ou avec `sudo`) :
-
-```bash
 sudo systemctl reload php-fpm
 ```
 

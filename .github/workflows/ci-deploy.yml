@@ -1,7 +1,9 @@
 # Préprod : tests à chaque push et pull request (relançables à la main depuis l'onglet Actions).
-# Aucun déploiement depuis GitHub : la mise en ligne se fait à la main sur le VPS, avec git (branche main) :
-# voir docs/devops/cyberpanel.md, section 6.
-name: Tests
+# Déploiement automatique : à chaque push sur main, une fois les tests verts, le job « deploy » se connecte en SSH au VPS.
+# La commande de mise à jour (git pull, composer, migrations, cache) est imposée côté serveur par `command="…"` dans
+# ~/.ssh/authorized_keys : voir docs/devops/cyberpanel.md, section 6.4. Un push sur une autre branche, une pull request
+# ou un lancement manuel (workflow_dispatch) ne déploie jamais : seuls les tests tournent.
+name: Tests et déploiement
 
 on:
   push:
@@ -69,3 +71,36 @@ jobs:
 
       - name: Tests PHPUnit
         run: php bin/phpunit --no-coverage
+
+  deploy:
+    name: Déploiement (production)
+    needs: tests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: production
+    # Un seul déploiement à la fois ; un déploiement en cours n'est jamais interrompu
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    steps:
+      - name: Clé SSH et hôte connu
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Mise à jour du VPS
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+        # Pas de commande distante : le serveur impose la sienne (authorized_keys)
+        run: ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST"
+
+      - name: Nettoyage de la clé
+        if: always()
+        run: rm -f ~/.ssh/deploy_key ~/.ssh/known_hosts
