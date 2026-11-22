@@ -1,7 +1,7 @@
 # Mémoire du projet — état d'avancement
 
 Dernière mise à jour : 2026-11-22 — branche `main` (PR #12 `feature/09-mail-to-users-product` fusionnée + commits e-mails sur `main`) ;
-en cours : suppression de `bin/deploy.sh` / `bin/backup.sh`, mise en ligne manuelle par git (fiche 038, non commitée)
+`bin/deploy.sh` / `bin/backup.sh` supprimés (commit `a581b14`, fiche 038) ; VPS mis à jour par git sur `a581b14` (2026-11-22)
 
 ## Où on en est
 
@@ -31,7 +31,7 @@ Le VPS est sous **AlmaLinux 9** + **CyberPanel** (OpenLiteSpeed, lsphp83, un uti
 - `imagescale(…, IMG_BICUBIC)` renvoie false avec la libgd de lsphp83 → miniatures réduites jamais créées (404).
   Remplacé par `imagecopyresampled` ; un échec de miniature refuse désormais l'envoi.
 - Réparation des médias existants : `php bin/console app:media:regenerate-thumbs` (`--all` pour tout refaire).
-- ffmpeg semble absent du VPS (`command -v ffmpeg` vide) → vidéos refusées à l'envoi : à installer.
+- ✅ ffmpeg installé sur le VPS (2026-11-22, `/usr/bin/ffmpeg`, via EPEL + CRB + RPM Fusion) — envoi de vidéo à confirmer.
 
 ### Installation du VPS (en cours, suivie avec l'utilisateur, procédure `docs/devops/cyberpanel.md`)
 
@@ -40,15 +40,19 @@ Le VPS est sous **AlmaLinux 9** + **CyberPanel** (OpenLiteSpeed, lsphp83, un uti
   (memory_limit 1024M, post_max_size 3G, disable_functions vide). En CLI, PHP force max_execution_time 0 et
   max_input_time -1 (même via get_cfg_var) : vérifier ces deux-là par `grep` dans le fichier.
 - ✅ Dépôt GitHub **public** : pas de deploy key pour cloner.
-- ❌ Clé de déploiement GitHub → VPS abandonnée (2026-11-22). Un premier essai fait en root avait laissé une ligne
-  `github-deploy-sarah` dans `/root/.ssh/authorized_keys` : vérifier qu'elle a bien été retirée.
+- ❌ Clé de déploiement GitHub → VPS abandonnée (2026-11-22) ; plus de ligne `github-deploy-sarah` dans
+  `/root/.ssh/authorized_keys` (vérifié).
+- ✅ Première mise à jour par git (2026-11-22) : `.git/FETCH_HEAD` appartenait à root (git lancé en root un jour) →
+  « Permission denied » ; réparé en root par `find "$APP" ! -user "$SITEUSER" -exec chown "$SITEUSER:$SITEGROUP" {} +`,
+  puis mise à jour complète (section 6 de cyberpanel.md, migration `Version20261121165628` comprise).
 - ✅ Site en ligne, admin comprise (2026-11-02). **Chemin réel** : `/home/famille-pitz.net/sarah.famille-pitz.net/sarah.famille-pitz.net`
   (sous-domaine de famille-pitz.net → utilisateur Linux du domaine parent), pas `/home/sarah.famille-pitz.net/app`
   (`cyberpanel.md` corrigé). `/admin` était en 500 (« mkdir … var/cache/prod/asset_mapper :
   Permission denied ») : `var/` créé par root → `chown -R` vers le propriétaire du projet + `cache:clear` en tant que lui.
   Toujours lancer git / console / composer en tant qu'utilisateur du site (`su - <user> -s /bin/bash`, vérifier `whoami`), jamais en root.
-- Reste : première mise à jour par git selon la nouvelle procédure (migration `Version20261121165628` comprise),
-  installer ffmpeg, vérifications (section 8 de cyberpanel.md).
+- Reste : vérifications dans le navigateur (section 8 de cyberpanel.md) — envoi de vidéo, « mot de passe oublié » et
+  réception des e-mails, pastille 💬, « Supprimer des médias », « Prévenir la famille » ; super-admin et albums publics
+  (voir « Rôles et visibilité ») si pas encore fait.
 
 À faire ensuite : finir l'installation du VPS (ci-dessus), confirmer que les tests GitHub passent au vert
 (2 échecs SMTP corrigés par MAILER_DSN=null://null, non confirmé), design adapté à Sarah (6 ans).
@@ -162,6 +166,8 @@ Les médias envoyés (`var/storage/media/`) et la base ne sont pas dans git : il
 - Twig : le résultat d'`include()` mis dans une variable (`set`) est ré-échappé à l'affichage → l'appeler directement dans la balise
 - Dev : ne jamais laisser `public/assets/` (issu d'`asset-map:compile`) : AssetMapper sert alors ces fichiers figés
   et les modifications de `assets/` (JS, CSS) n'apparaissent plus. `rm -rf public/assets` + `cache:clear`
+- VPS : un `git`/`composer`/`console` lancé en root rend des fichiers (`.git/`, `var/`) illisibles pour l'utilisateur
+  du site → `find "$APP" ! -user "$SITEUSER"` pour les repérer, `chown` pour réparer
 - Fins de ligne : l'IDE Windows convertit en CRLF, le dépôt est en LF
 - `FrontTest::testFeedIsPaginated` génère `PER_PAGE + 1` médias horodatés : garder des heures valides
   (`%02d:%02d` avec `intdiv`/modulo) — `10:%02d` cassait dès PER_PAGE > 59
